@@ -58,7 +58,7 @@ body{font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothi
 .dh:first-child{color:var(--SUN)}.dh:last-child{color:var(--SAT)}
 .cgrid{display:grid;grid-template-columns:repeat(7,1fr)}
 
-.dc{min-height:82px;border-right:1px solid #f2f2f2;border-bottom:1px solid #f2f2f2;padding:3px 2px 2px;cursor:pointer;overflow:hidden;transition:background .1s}
+.dc{min-height:82px;border-right:1px solid #f2f2f2;border-bottom:1px solid #f2f2f2;padding:3px 2px 2px;cursor:pointer;overflow:visible;transition:background .1s}
 .dc:hover{background:#f8faff}
 .dc:nth-child(7n){border-right:none}
 .dnum{font-size:13px;font-weight:500;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px;border-radius:50%}
@@ -251,7 +251,7 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 
 /* ── WEEKLY CALENDAR ── */
 #wcalWrap{flex-direction:column;flex:1;overflow:hidden}
-.wc-day-hdr{display:grid;grid-template-columns:40px repeat(7,1fr);background:#fff;border-bottom:1px solid var(--BD);flex-shrink:0;position:sticky;top:0;z-index:10}
+.wc-day-hdr{display:grid;grid-template-columns:40px repeat(3,1fr);background:#fff;border-bottom:1px solid var(--BD);flex-shrink:0;position:sticky;top:0;z-index:10}
 .wc-dh-cell{text-align:center;padding:5px 1px 4px}
 .wc-dh-name{font-size:10px;font-weight:600;color:#888}
 .wc-dh-date{font-size:14px;font-weight:700;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;margin:2px auto 0;color:#333}
@@ -343,6 +343,24 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .sp-photo-btn{width:100%;padding:12px;border:1.5px dashed #ddd;background:none;border-radius:10px;font-size:13px;color:#888;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
 .sp-photo-btn:hover{border-color:var(--P);color:var(--P)}
 .char-count{font-size:11px;color:#bbb;text-align:right;margin-top:4px}
+
+@keyframes calSlideUp{from{transform:translateY(28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes calSlideDown{from{transform:translateY(-28px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes calSlideLeft{from{transform:translateX(28px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes calSlideRight{from{transform:translateX(-28px);opacity:0}to{transform:translateX(0);opacity:1}}
+.cal-anim-up{animation:calSlideUp .24s cubic-bezier(.4,0,.2,1)}
+.cal-anim-down{animation:calSlideDown .24s cubic-bezier(.4,0,.2,1)}
+.cal-anim-left{animation:calSlideLeft .24s cubic-bezier(.4,0,.2,1)}
+.cal-anim-right{animation:calSlideRight .24s cubic-bezier(.4,0,.2,1)}
+.chat-del-btn{background:none;border:none;cursor:pointer;color:#ddd;font-size:13px;padding:0 2px;margin-left:auto;border-radius:4px;line-height:1;transition:color .12s;flex-shrink:0}
+.chat-del-btn:hover{color:#e53935}
+.chat-react-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;align-items:center;position:relative}
+.chat-react-btn{background:#f5f5f5;border:1.5px solid #e8e8e8;border-radius:20px;cursor:pointer;font-size:12px;padding:2px 7px;display:inline-flex;align-items:center;gap:2px;transition:all .12s;font-family:inherit}
+.chat-react-btn.reacted{background:#e8f5e9;border-color:#a5d6a7}
+.chat-react-btn .react-cnt{font-size:11px;color:#777}
+.chat-react-add{background:#f5f5f5;border:1.5px solid #e8e8e8;border-radius:20px;cursor:pointer;font-size:12px;padding:2px 8px;color:#aaa;transition:all .12s;font-family:inherit}
+.chat-react-picker{display:flex;gap:4px;padding:6px 8px;background:#fff;border:1.5px solid #e0e0e0;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.13);position:absolute;z-index:50;bottom:28px;left:0}
+.chat-react-picker button{background:none;border:none;font-size:20px;cursor:pointer;border-radius:6px;padding:2px 4px}
 </style>
 </head>
 <body>
@@ -1231,7 +1249,7 @@ function renderCal(){
     div.appendChild(dnRow);
 
     // Events (max 2) — 이름만, 시간 없음
-    evs.slice(0,2).forEach(ev=>{
+    evs.forEach(ev=>{
       const cat=cats.find(c=>c.id===ev.categoryId);
       const cls=cat?cat.color:(ev.color||'c-blue');
       const isGrp=(ev.scope||'all')!=='all';
@@ -1243,13 +1261,6 @@ function renderCal(){
       p.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
       div.appendChild(p);
     });
-    if(evs.length>2){
-      const m2=document.createElement('div');
-      m2.className='ep-more';
-      m2.textContent=`+${evs.length-2}개`;
-      m2.onclick=e=>{e.stopPropagation();openDd(cell.d,ds);};
-      div.appendChild(m2);
-    }
 
     // 사진 수 (이벤트 전체)
     const photoCnt=evs.reduce((acc,ev)=>acc+(ev.photos||[]).length,0);
@@ -1282,12 +1293,20 @@ function changeMonth(d){
   if(viewMode==='week'){
     if(!wcCenterDate) wcCenterDate=new Date();
     wcCenterDate=new Date(wcCenterDate.getTime()+d*86400000);
-    renderWeek(); return;
+    renderWeek(); _animCal('week',d); return;
   }
-  VM+=d; if(VM<0){VM=11;VY--;} if(VM>11){VM=0;VY++;} renderCal();
+  VM+=d; if(VM<0){VM=11;VY--;} if(VM>11){VM=0;VY++;} renderCal(); _animCal('month',d);
+}
+function _animCal(v,d){
+  const e=v==='month'?document.getElementById('cgrid'):document.getElementById('wcInner');
+  if(!e)return;
+  ['cal-anim-up','cal-anim-down','cal-anim-left','cal-anim-right'].forEach(c=>e.classList.remove(c));
+  void e.offsetWidth;
+  e.classList.add(v==='month'?(d>0?'cal-anim-up':'cal-anim-down'):(d>0?'cal-anim-left':'cal-anim-right'));
+  setTimeout(()=>['cal-anim-up','cal-anim-down','cal-anim-left','cal-anim-right'].forEach(c=>e.classList.remove(c)),280);
 }
 function goToday(){
-  if(viewMode==='week'){ wcCenterDate=new Date(); renderWeek(); return; }
+  if(viewMode==='week'){ wcCenterDate=new Date(); renderWeek(); _animCal('week',d); return; }
   const n=new Date(); VY=n.getFullYear(); VM=n.getMonth(); renderCal();
 }
 
@@ -1669,6 +1688,7 @@ function _renderEvPhotos(ev){
     </div>`).join('');
 }
 
+const _RE=['❤️','👍','😂','😮','😢','🎾'];
 function _renderEvChat(ev){
   const area=document.getElementById('evDChatArea');
   const msgs=ev.chat||[];
@@ -1678,18 +1698,48 @@ function _renderEvChat(ev){
     const u=users.find(x=>x.id===msg.userId);
     const nick=u?u.name:(msg.userId==='__guest__'?'게스트':msg.userId);
     const isMine=msg.userId===CU.id;
+    const canDel=isMine||(CU.role==='admin');
     const ts=new Date(msg.ts);
     const timeStr=ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0');
     const avHtml=u&&u.avatar
       ?`<div class="chat-avatar"><img src="${u.avatar}" alt=""></div>`
       :`<div class="chat-avatar">${nick.slice(0,1)}</div>`;
-    return `<div class="chat-bubble${isMine?' chat-mine':''}">
-      <div class="chat-hd">${avHtml}<div class="chat-nick">${nick}</div></div>
+    const reacts=msg.reactions||{};
+    const rb=Object.entries(reacts).filter(([,u])=>u.length>0).map(([e,u])=>`<button class="chat-react-btn${u.includes(CU.id)?' reacted':''}" onclick="toggleChatReaction('${msg.id}','${e}')">${e}<span class="react-cnt">${u.length}</span></button>`).join('');
+    const db=canDel?`<button class="chat-del-btn" onclick="deleteChat('${msg.id}')" title="삭제">✕</button>`:'';
+    return `<div class="chat-bubble${isMine?' chat-mine':''}" data-msgid="${msg.id}">
+      <div class="chat-hd">${avHtml}<div class="chat-nick">${nick}</div>${db}</div>
       <div class="chat-text">${msg.text.replace(/</g,'&lt;')}</div>
       <div class="chat-ts">${timeStr}</div>
+      <div class="chat-react-row">${rb}<button class="chat-react-add" onclick="showReactPicker('${msg.id}',this)">+ 반응</button></div>
     </div>`;
   }).join('');
   area.scrollTop=area.scrollHeight;
+}
+function deleteChat(msgId){
+  if(!detailEvId)return;
+  const evs=getEvents(),i=evs.findIndex(e=>e.id===detailEvId);if(i===-1)return;
+  const msg=(evs[i].chat||[]).find(m=>m.id===msgId);if(!msg)return;
+  if(msg.userId!==CU.id&&CU.role!=='admin'){toast('삭제 권한이 없습니다');return;}
+  evs[i]={...evs[i],chat:(evs[i].chat||[]).filter(m=>m.id!==msgId)};
+  setEvents(evs);_renderEvChat(evs[i]);toast('댓글이 삭제되었습니다 🗑');
+}
+function toggleChatReaction(msgId,emoji){
+  if(!detailEvId)return;
+  const evs=getEvents(),i=evs.findIndex(e=>e.id===detailEvId);if(i===-1)return;
+  const chat=[...(evs[i].chat||[])],mi=chat.findIndex(m=>m.id===msgId);if(mi===-1)return;
+  const reactions={...(chat[mi].reactions||{})},uids=[...(reactions[emoji]||[])],uidx=uids.indexOf(CU.id);
+  if(uidx===-1)uids.push(CU.id);else uids.splice(uidx,1);
+  if(uids.length===0)delete reactions[emoji];else reactions[emoji]=uids;
+  chat[mi]={...chat[mi],reactions};evs[i]={...evs[i],chat};
+  setEvents(evs);_renderEvChat(evs[i]);
+}
+function showReactPicker(msgId,btn){
+  document.querySelectorAll('.chat-react-picker').forEach(p=>p.remove());
+  const picker=document.createElement('div');picker.className='chat-react-picker';
+  _RE.forEach(emoji=>{const b=document.createElement('button');b.textContent=emoji;b.onclick=(e)=>{e.stopPropagation();toggleChatReaction(msgId,emoji);picker.remove();};picker.appendChild(b);});
+  btn.closest('.chat-react-row').appendChild(picker);
+  setTimeout(()=>document.addEventListener('click',function _h(e){if(!picker.contains(e.target)){picker.remove();document.removeEventListener('click',_h);}}),30);
 }
 
 function openEditFromDetail(){
