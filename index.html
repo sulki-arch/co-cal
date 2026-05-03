@@ -1374,141 +1374,97 @@ function renderWeek(){
   if(!wcCenterDate) wcCenterDate=new Date();
   const todayStr=fd(new Date());
   const DAY=['일','월','화','수','목','금','토'];
-
   const days=[];
-  for(let i=-1;i<=1;i++){
-    const d=new Date(wcCenterDate); d.setDate(d.getDate()+i); days.push(d);
-  }
-
+  for(let i=-1;i<=1;i++){ const d=new Date(wcCenterDate); d.setDate(d.getDate()+i); days.push(d); }
   const f=days[0],l=days[2];
-  document.getElementById('hmonth').textContent=
-    `${f.getMonth()+1}/${f.getDate()} ~ ${l.getMonth()+1}/${l.getDate()}`;
-
+  document.getElementById('hmonth').textContent=`${f.getMonth()+1}/${f.getDate()} ~ ${l.getMonth()+1}/${l.getDate()}`;
   const events=getEvents(), cats=getCats();
 
-  // ─── 요일 헤더 ───
+  // ── 요일 헤더 ──
   const hdr=document.getElementById('wcDayHdr');
   hdr.innerHTML='<div></div>'+days.map(d=>{
-    const ds=fd(d), dow=d.getDay(), isT=ds===todayStr;
+    const ds=fd(d),dow=d.getDay(),isT=ds===todayStr;
     const cls=dow===0?'wc-sun':dow===6?'wc-sat':'';
-    return `<div class="wc-dh-cell ${cls}">
-      <div class="wc-dh-name">${DAY[dow]}</div>
-      <div class="wc-dh-date${isT?' wc-today':''}">${d.getDate()}</div>
-    </div>`;
+    return `<div class="wc-dh-cell ${cls}"><div class="wc-dh-name">${DAY[dow]}</div><div class="wc-dh-date${isT?' wc-today':''}">${d.getDate()}</div></div>`;
   }).join('');
 
-  // ─── 종일 이벤트 바 (시간없는 이벤트 + 장기일정 모두 표시) ───
+  // ── 종일 바: 월간과 동일한 필터 (누락 없음) ──
   const allday=document.getElementById('wcAlldayBar');
-  const alldayEvs=events.filter(e=>{
-    if(!canSeeEvent(e)||hiddenCats.has(e.categoryId)) return false;
-    if(!e.startTime) return true;
-    const _sd=e.startDate||e.date, _ed=e.endDate||e.date;
-    return _ed>_sd;
+  const visEvs=events.filter(e=>canSeeEvent(e)&&!hiddenCats.has(e.categoryId));
+  const alldayDays=days.map(d=>{
+    const ds=fd(d);
+    // 월간 캘린더와 동일 조건: sd<=ds<=ed
+    return visEvs.filter(e=>{
+      const sd=e.startDate||e.date, ed=e.endDate||e.date;
+      if(!(sd<=ds&&ds<=ed)) return false;
+      // 시간 있는 단일일 이벤트는 시간 그리드에 표시 (그리드 범위 안이면 생략)
+      if(e.startTime){
+        const sh=parseInt((e.startTime||'').slice(0,2))||0;
+        const eh=e.endTime?parseInt(e.endTime.slice(0,2)):sh+1;
+        const sd2=e.startDate||e.date, ed2=e.endDate||e.date;
+        if(sd2===ed2&&sh>=WC_START&&eh<=WC_END) return false;
+      }
+      return true;
+    });
   });
-  if(alldayEvs.length){
+  const hasAllday=alldayDays.some(arr=>arr.length>0);
+  if(hasAllday){
     allday.style.display='grid';
-    allday.innerHTML='<div class="wc-allday-lbl">종일</div>'+days.map(d=>{
-      const ds=fd(d);
-      const dayEvs=alldayEvs.filter(e=>{
-        const sd=e.startDate||e.date, ed=e.endDate||e.date;
-        return sd<=ds&&ds<=ed;
-      });
-      return `<div class="wc-allday-cell">${dayEvs.map(ev=>{
-        const cat=cats.find(c=>c.id===ev.categoryId);
-        const cls=cat?cat.color:'c-blue';
-        return `<div class="wc-allday-ev ${cls}" onclick="openEvDetail('${ev.id}')" title="${ev.title}">${ev.title}</div>`;
-      }).join('')}</div>`;
-    }).join('');
-  } else {
-    allday.style.display='none';
-  }
+    allday.innerHTML='<div class="wc-allday-lbl">종일</div>'+days.map((d,di)=>`<div class="wc-allday-cell">${alldayDays[di].map(ev=>{
+      const cat=cats.find(c=>c.id===ev.categoryId);
+      return `<div class="wc-allday-ev ${cat?cat.color:'c-blue'}" onclick="openEvDetail('${ev.id}')" title="${ev.title}">${ev.title}</div>`;
+    }).join('')}</div>`).join('');
+  } else { allday.style.display='none'; }
 
-  // ─── 시간 그리드 ───
+  // ── 시간 그리드 ──
   const inner=document.getElementById('wcInner');
   const prevScroll=document.getElementById('wcScroll').scrollTop;
   let html='';
   for(let h=WC_START;h<=WC_END;h++){
     html+=`<div class="wc-time-label" style="height:${WC_HOUR_H}px">${h.toString().padStart(2,'0')}:00</div>`;
-    days.forEach(d=>{
-      const ds=fd(d), isT=ds===todayStr;
-      html+=`<div class="wc-hour-cell${isT?' wc-today-col':''}" style="height:${WC_HOUR_H}px"></div>`;
-    });
+    days.forEach(d=>{ const ds=fd(d),isT=ds===todayStr; html+=`<div class="wc-hour-cell${isT?' wc-today-col':''}" style="height:${WC_HOUR_H}px"></div>`; });
   }
   inner.innerHTML=html;
 
-  // ─── 현재 시각 선 ───
-  const now=new Date();
-  const nowDs=fd(now);
-  const nowDayIdx=days.findIndex(d=>fd(d)===nowDs);
+  // ── 현재 시각 선 ──
+  const now=new Date(),nowDs=fd(now),nowDayIdx=days.findIndex(d=>fd(d)===nowDs);
   if(nowDayIdx>=0){
-    const nowH=now.getHours(), nowM=now.getMinutes();
+    const nowH=now.getHours(),nowM=now.getMinutes();
     if(nowH>=WC_START&&nowH<=WC_END){
-      const nowLine=document.createElement('div');
-      nowLine.className='wc-now-line';
-      const topPx=(nowH-WC_START)*WC_HOUR_H+(nowM/60*WC_HOUR_H);
-      nowLine.style.top=topPx+'px';
-      inner.appendChild(nowLine);
+      const ln=document.createElement('div'); ln.className='wc-now-line';
+      ln.style.top=((nowH-WC_START)*WC_HOUR_H+(nowM/60*WC_HOUR_H))+'px';
+      inner.appendChild(ln);
     }
   }
 
-  // ─── 이벤트 블록 배치 ───
+  // ── 시간 있는 이벤트 블록 ──
   requestAnimationFrame(()=>{
-    const totalW=inner.offsetWidth||380;
-    const dayW=(totalW-40)/3;
-
-    events.forEach(ev=>{
-      if(!canSeeEvent(ev)||hiddenCats.has(ev.categoryId)) return;
+    const totalW=inner.offsetWidth||380, dayW=(totalW-40)/3;
+    visEvs.forEach(ev=>{
       if(!ev.startTime) return;
-      const _esd=ev.startDate||ev.date, _eed=ev.endDate||ev.date;
-      if(_eed>_esd) return;
-      const sd=_esd, ed=_eed;
-
+      const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
       days.forEach((d,di)=>{
         const ds=fd(d);
         if(sd>ds||ds>ed) return;
-
         const sh=parseInt(ev.startTime.slice(0,2))||0;
         const sm=parseInt(ev.startTime.slice(3,5))||0;
         const eh=ev.endTime?parseInt(ev.endTime.slice(0,2)):sh+1;
         const em=ev.endTime?parseInt(ev.endTime.slice(3,5)):0;
-
         if(sh>WC_END||eh<WC_START) return;
-        const csh=Math.max(sh,WC_START), ceh=Math.min(eh,WC_END);
+        const csh=Math.max(sh,WC_START),ceh=Math.min(eh,WC_END);
         const top=(csh-WC_START)*WC_HOUR_H+(sm/60*WC_HOUR_H);
-        const durMin=Math.max((ceh-csh)*60-sm+em,15);
-        const height=Math.max(durMin/60*WC_HOUR_H,22);
-        const left=40+di*dayW+1;
-        const width=dayW-2;
-
+        const height=Math.max(((ceh-csh)*60-sm+em)/60*WC_HOUR_H,22);
         const cat=cats.find(c=>c.id===ev.categoryId);
-        const cls=cat?cat.color:'c-blue';
-        const attCnt=(ev.attendees||[]).length;
-        const chatCnt=(ev.chat||[]).length;
-        const attNames=_wcAttNames(ev);
-        const memoSnip=ev.memo?ev.memo.slice(0,100)+(ev.memo.length>100?'…':''):'';
-
         const el=document.createElement('div');
-        el.className='wc-ev '+cls;
-        el.style.cssText=`top:${top}px;left:${left}px;width:${width}px;height:${height}px`;
-        let inner2=`<div class="wc-ev-name">${ev.title}</div>`;
-        if(height>24){
-          const attStr=attCnt?(attNames?`👥${attCnt} (${attNames})`:`👥${attCnt}`):'';
-          const chatStr=chatCnt?`💬${chatCnt}`:'';
-          if(attStr||chatStr)
-            inner2+=`<div class="wc-ev-meta">${[attStr,chatStr].filter(Boolean).join('　')}</div>`;
-        }
-        if(height>36&&memoSnip)
-          inner2+=`<div class="wc-ev-meta">📝 ${memoSnip}</div>`;
-        el.innerHTML=inner2;
+        el.className='wc-ev '+(cat?cat.color:'c-blue');
+        el.style.cssText=`top:${top}px;left:${40+di*dayW+1}px;width:${dayW-2}px;height:${height}px`;
+        el.innerHTML=`<div class="wc-ev-name">${ev.title}</div>`;
         el.onclick=()=>openEvDetail(ev.id);
         document.getElementById('wcInner').appendChild(el);
       });
     });
-
     const scrollEl=document.getElementById('wcScroll');
-    if(scrollEl){
-      scrollEl.scrollTop=prevScroll||Math.max(0,(8-WC_START)*WC_HOUR_H-40);
-    }
+    if(scrollEl) scrollEl.scrollTop=prevScroll||Math.max(0,(8-WC_START)*WC_HOUR_H-40);
   });
 }function renderWeek(){
   if(!wcCenterDate) wcCenterDate=new Date();
