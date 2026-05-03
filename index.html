@@ -454,8 +454,8 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 
   <!-- Weekly Calendar -->
   <div id="wcalWrap" style="display:none">
-    <div class="wc-day-hdr" id="wcDayHdr"></div>
     <div class="wc-allday-bar" id="wcAlldayBar"></div>
+    <div class="wc-day-hdr" id="wcDayHdr"></div>
     <div class="wc-scroll" id="wcScroll">
       <div class="wc-inner" id="wcInner"></div>
     </div>
@@ -1374,106 +1374,6 @@ function renderWeek(){
   if(!wcCenterDate) wcCenterDate=new Date();
   const todayStr=fd(new Date());
   const DAY=['일','월','화','수','목','금','토'];
-  const days=[];
-  for(let i=-1;i<=1;i++){ const d=new Date(wcCenterDate); d.setDate(d.getDate()+i); days.push(d); }
-  const f=days[0],l=days[2];
-  document.getElementById('hmonth').textContent=(f.getMonth()+1)+'/'+f.getDate()+' ~ '+(l.getMonth()+1)+'/'+l.getDate();
-  const events=getEvents(), cats=getCats();
-
-  const hdr=document.getElementById('wcDayHdr');
-  let hdrHtml='<div></div>';
-  days.forEach(function(d){
-    const ds=fd(d),dow=d.getDay(),isT=ds===todayStr;
-    const cls=dow===0?'wc-sun':dow===6?'wc-sat':'';
-    hdrHtml+='<div class="wc-dh-cell '+cls+'"><div class="wc-dh-name">'+DAY[dow]+'</div><div class="wc-dh-date'+(isT?' wc-today':'')+'" >'+d.getDate()+'</div></div>';
-  });
-  hdr.innerHTML=hdrHtml;
-
-  const allday=document.getElementById('wcAlldayBar');
-  const visEvs=events.filter(function(e){ return canSeeEvent(e)&&!hiddenCats.has(e.categoryId); });
-  const alldayDays=days.map(function(d){
-    const ds=fd(d);
-    return visEvs.filter(function(e){
-      const sd=e.startDate||e.date, ed=e.endDate||e.date;
-      if(!(sd<=ds&&ds<=ed)) return false;
-      if(e.startTime){
-        const sh=parseInt((e.startTime||'').slice(0,2))||0;
-        const eh=e.endTime?parseInt(e.endTime.slice(0,2)):sh+1;
-        if(sd===ed&&sh>=WC_START&&eh<=WC_END) return false;
-      }
-      return true;
-    });
-  });
-  const hasAllday=alldayDays.some(function(arr){ return arr.length>0; });
-  if(hasAllday){
-    allday.style.display='grid';
-    let adHtml='<div class="wc-allday-lbl">종일</div>';
-    days.forEach(function(d,di){
-      adHtml+='<div class="wc-allday-cell">';
-      alldayDays[di].forEach(function(ev){
-        const cat=cats.find(function(c){ return c.id===ev.categoryId; });
-        const cls=cat?cat.color:'c-blue';
-        adHtml+='<div class="wc-allday-ev '+cls+'" onclick="openEvDetail(\''+ev.id+'\')" title="'+ev.title.replace(/"/g,'&quot;')+'">'+ev.title+'</div>';
-      });
-      adHtml+='</div>';
-    });
-    allday.innerHTML=adHtml;
-  } else { allday.style.display='none'; }
-
-  const inner=document.getElementById('wcInner');
-  const prevScroll=document.getElementById('wcScroll').scrollTop;
-  let html='';
-  for(let h=WC_START;h<=WC_END;h++){
-    html+='<div class="wc-time-label" style="height:'+WC_HOUR_H+'px">'+String(h).padStart(2,'0')+':00</div>';
-    days.forEach(function(d){
-      const ds=fd(d),isT=ds===todayStr;
-      html+='<div class="wc-hour-cell'+(isT?' wc-today-col':'')+'" style="height:'+WC_HOUR_H+'px"></div>';
-    });
-  }
-  inner.innerHTML=html;
-
-  const now=new Date(),nowDs=fd(now),nowDayIdx=days.findIndex(function(d){ return fd(d)===nowDs; });
-  if(nowDayIdx>=0){
-    const nowH=now.getHours(),nowM=now.getMinutes();
-    if(nowH>=WC_START&&nowH<=WC_END){
-      const ln=document.createElement('div'); ln.className='wc-now-line';
-      ln.style.top=((nowH-WC_START)*WC_HOUR_H+(nowM/60*WC_HOUR_H))+'px';
-      inner.appendChild(ln);
-    }
-  }
-
-  requestAnimationFrame(function(){
-    const totalW=inner.offsetWidth||380, dayW=(totalW-40)/3;
-    visEvs.forEach(function(ev){
-      if(!ev.startTime) return;
-      const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
-      days.forEach(function(d,di){
-        const ds=fd(d);
-        if(sd>ds||ds>ed) return;
-        const sh=parseInt(ev.startTime.slice(0,2))||0;
-        const sm=parseInt(ev.startTime.slice(3,5))||0;
-        const eh=ev.endTime?parseInt(ev.endTime.slice(0,2)):sh+1;
-        const em=ev.endTime?parseInt(ev.endTime.slice(3,5)):0;
-        if(sh>WC_END||eh<WC_START) return;
-        const csh=Math.max(sh,WC_START),ceh=Math.min(eh,WC_END);
-        const top=(csh-WC_START)*WC_HOUR_H+(sm/60*WC_HOUR_H);
-        const height=Math.max(((ceh-csh)*60-sm+em)/60*WC_HOUR_H,22);
-        const cat=cats.find(function(c){ return c.id===ev.categoryId; });
-        const el=document.createElement('div');
-        el.className='wc-ev '+(cat?cat.color:'c-blue');
-        el.style.cssText='top:'+top+'px;left:'+(40+di*dayW+1)+'px;width:'+(dayW-2)+'px;height:'+height+'px';
-        el.innerHTML='<div class="wc-ev-name">'+ev.title+'</div>';
-        el.onclick=function(){ openEvDetail(ev.id); };
-        document.getElementById('wcInner').appendChild(el);
-      });
-    });
-    const scrollEl=document.getElementById('wcScroll');
-    if(scrollEl) scrollEl.scrollTop=prevScroll||Math.max(0,(8-WC_START)*WC_HOUR_H-40);
-  });
-}function renderWeek(){
-  if(!wcCenterDate) wcCenterDate=new Date();
-  const todayStr=fd(new Date());
-  const DAY=['일','월','화','수','목','금','토'];
 
   // 3일 (center ±1)
   const days=[];
@@ -1503,9 +1403,7 @@ function renderWeek(){
   const allday=document.getElementById('wcAlldayBar');
   const alldayEvs=events.filter(e=>{
     if(!canSeeEvent(e)||hiddenCats.has(e.categoryId)) return false;
-    if(!e.startTime) return true;
-    const _sd=e.startDate||e.date, _ed=e.endDate||e.date;
-    return _ed>_sd;
+    const _sd2=e.startDate||e.date,_ed2=e.endDate||e.date; return !e.startTime||_ed2>_sd2;
   });
   if(alldayEvs.length){
     allday.style.display='grid';
@@ -1562,10 +1460,133 @@ function renderWeek(){
       const ds=fd(d);
       const dayTimedEvs=events.filter(ev=>{
         if(!canSeeEvent(ev)||hiddenCats.has(ev.categoryId)) return false;
-        if(!ev.startTime) return;
-      const _esd=ev.startDate||ev.date, _eed=ev.endDate||ev.date;
-      if(_eed>_esd) return;
-      const sd=_esd, ed=_eed; const ed=e.endDate||e.date;
+        if(!ev.startTime) return false;
+        const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
+        return sd<=ds&&ds<=ed;
+      });
+      _wcLayout(dayTimedEvs).forEach(({ev,col,totalCols})=>{
+        const sh=parseInt(ev.startTime.slice(0,2))||0;
+        const sm=parseInt(ev.startTime.slice(3,5))||0;
+        const eh=ev.endTime?parseInt(ev.endTime.slice(0,2)):sh+1;
+        const em=ev.endTime?parseInt(ev.endTime.slice(3,5)):0;
+        if(sh>WC_END||eh<WC_START) return;
+        const csh=Math.max(sh,WC_START), ceh=Math.min(eh,WC_END);
+        const top=(csh-WC_START)*WC_HOUR_H+(sm/60*WC_HOUR_H);
+        const durMin=Math.max((ceh-csh)*60-sm+em,15);
+        const height=Math.max(durMin/60*WC_HOUR_H,22);
+        const colW=dayW/totalCols;
+        const left=40+di*dayW+col*colW+1;
+        const width=colW-2;
+        const cat=cats.find(c=>c.id===ev.categoryId);
+        const cls=cat?cat.color:'c-blue';
+        const attCnt=(ev.attendees||[]).length;
+        const chatCnt=(ev.chat||[]).length;
+        const attNames=_wcAttNames(ev);
+        const memoSnip=ev.memo?ev.memo.slice(0,100)+(ev.memo.length>100?'…':''):'';
+        const el=document.createElement('div');
+        el.className='wc-ev '+cls;
+        el.style.cssText=`top:${top}px;left:${left}px;width:${width}px;height:${height}px`;
+        let inner2=`<div class="wc-ev-name">${ev.title}</div>`;
+        if(height>24){
+          const attStr=attCnt?(attNames?`👥${attCnt} (${attNames})`:`👥${attCnt}`):'';
+          const chatStr=chatCnt?`💬${chatCnt}`:'';
+          if(attStr||chatStr) inner2+=`<div class="wc-ev-meta">${[attStr,chatStr].filter(Boolean).join('　')}</div>`;
+        }
+        if(height>36&&memoSnip) inner2+=`<div class="wc-ev-meta">📝 ${memoSnip}</div>`;
+        el.innerHTML=inner2;
+        el.onclick=()=>openEvDetail(ev.id);
+        document.getElementById('wcInner').appendChild(el);
+      });
+    });
+
+    // 스크롤 복원 또는 기본 위치(08:00)
+    const scrollEl=document.getElementById('wcScroll');
+    if(scrollEl){
+      scrollEl.scrollTop=prevScroll||Math.max(0,(8-WC_START)*WC_HOUR_H-40);
+    }
+  });
+}
+
+function _wcAttNames(ev){
+  const users=getUsers();
+  return (ev.attendees||[]).map(uid=>{
+    const u=users.find(x=>x.id===uid); return u?u.name:null;
+  }).filter(Boolean).join(', ');
+}
+
+/* ═══════════════════════════════════════
+   7.  CATEGORY FILTER BAR
+═══════════════════════════════════════ */
+function renderCatBar(){
+  const cats=getCats();
+  const bar=document.getElementById('catBar');
+  const allOn=hiddenCats.size===0;
+  let h=`<div class="c-chip ${allOn?'active':''}" onclick="toggleAllCats()" style="${allOn?'background:#e3f2fd;border-color:#90caf9;color:#1565c0':''}">전체</div>`;
+  cats.forEach(c=>{
+    const bg=CBG[c.color]||'#90caf9';
+    const on=!hiddenCats.has(c.id);
+    h+=`<div class="c-chip ${on?'active':''}" data-id="${c.id}" onclick="toggleCat('${c.id}')"
+      style="${on?`background:${bg}33;border-color:${bg};color:#333`:''}">
+      ${on?`<div class="c-chip-dot" style="background:${bg}"></div>`:''}${c.name}</div>`;
+  });
+  bar.innerHTML=h;
+}
+
+function toggleCat(id){
+  if(hiddenCats.has(id)) hiddenCats.delete(id); else hiddenCats.add(id);
+  renderCatBar(); renderCal();
+}
+function toggleAllCats(){ hiddenCats.clear(); renderCatBar(); renderCal(); }
+
+/* ═══════════════════════════════════════
+   8.  DRAWER
+═══════════════════════════════════════ */
+function openDrawer(){ document.getElementById('drawer').classList.add('open'); document.getElementById('ovl').style.display='block'; }
+function closeDrawer(){ document.getElementById('drawer').classList.remove('open'); document.getElementById('ovl').style.display='none'; }
+
+/* ═══════════════════════════════════════
+   9.  SEARCH
+═══════════════════════════════════════ */
+function toggleSearch(){
+  const b=document.getElementById('sbar');
+  b.classList.toggle('open');
+  if(b.classList.contains('open')) document.getElementById('sinput').focus();
+  else { document.getElementById('sinput').value=''; document.getElementById('sres').innerHTML=''; }
+}
+function doSearch(q){
+  const box=document.getElementById('sres');
+  if(!q.trim()){ box.innerHTML=''; return; }
+  const cats=getCats();
+  const res=getEvents().filter(e=>e.title.includes(q));
+  if(!res.length){ box.innerHTML='<div class="sres-empty">검색 결과가 없습니다</div>'; return; }
+  box.innerHTML=res.map(e=>{
+    const cat=cats.find(c=>c.id===e.categoryId);
+    const bg=CBG[cat?cat.color:e.color||'c-blue']||'#90caf9';
+    return `<div class="sres-item" onclick="openEvModal('${e.id}',null)">
+      <div class="sres-dot" style="background:${bg}"></div>
+      <div><div style="font-size:15px;color:#1a1a1a">${e.title}</div>
+      <div style="font-size:12px;color:#999">${e.startDate||e.date}${e.startTime?' '+e.startTime.slice(0,5):''}${cat?' · '+cat.name:''}</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════
+   10.  DAY DETAIL
+═══════════════════════════════════════ */
+function openDd(date,ds){
+  ddDate=ds;
+  document.getElementById('ddT').textContent=`${date.getMonth()+1}월 ${date.getDate()}일`;
+  const editable=canEdit();
+  document.getElementById('ddMediaAddRow').style.display=editable?'flex':'none';
+  document.getElementById('ddAddEvBtn').style.display=editable?'':'none';
+  refreshDd();
+  openM('ddM');
+}
+function refreshDd(){
+  if(!ddDate) return;
+  const cats=getCats();
+  let evs=getEvents().filter(e=>{
+    const sd=e.startDate||e.date; const ed=e.endDate||e.date;
     return sd<=ddDate && ddDate<=ed && canSeeEvent(e);
   });
   evs=sortEvs(evs,cats);
@@ -2087,7 +2108,7 @@ function renderScopeBar(){
 
 function toggleScope(sk){
   if(hiddenScopes.has(sk)) hiddenScopes.delete(sk); else hiddenScopes.add(sk);
-  renderScopeBar(); if(viewMode==='week') renderWeek(); else renderCal();
+  renderScopeBar(); renderCal();
 }
 
 /* ═══════════════════════════════════════
@@ -2412,32 +2433,8 @@ function saveProfile(){
 /* ═══════════════════════════════════════
    14c.  SWIPE GESTURES
 ═══════════════════════════════════════ */
-function _doRefresh(){
-  if(!_db){
-    renderCatBar(); renderScopeBar();
-    if(viewMode==='week') renderWeek(); else renderCal();
-    toast('새로고침됨');
-    return;
-  }
-  toast('새로고침 중...');
-  _db.ref('/cal').once('value').then(snap=>{
-    const d=snap.val()||{};
-    _D.users=fbArr(d.users); _D.events=fbArr(d.events);
-    _D.cats=d.cats?fbArr(d.cats):null;
-    const rawMedia=d.media||{}; _D.media={};
-    Object.keys(rawMedia).forEach(ds2=>{ _D.media[ds2]=fbArr(rawMedia[ds2]); });
-    _D.covers=d.covers??{}; _D.groups=fbArr(d.groups); _D.splash=d.splash??null;
-    renderCatBar(); renderScopeBar();
-    if(viewMode==='week') renderWeek(); else renderCal();
-    toast('✓ 새로고침 완료');
-  }).catch(()=>{
-    if(viewMode==='week') renderWeek(); else renderCal();
-    toast('새로고침됨');
-  });
-}
-
 function initSwipeGestures(){
-  // 월간 캘린더: 좌우 스와이프 → 월 이동 / 아래↓ 스와이프 → 새로고침
+  // 월간 캘린더: 상하 스와이프 → 월 이동
   const calEl=document.querySelector('.cal');
   let cty=0, ctx2=0;
   calEl.addEventListener('touchstart',e=>{
@@ -2445,12 +2442,11 @@ function initSwipeGestures(){
   },{passive:true});
   calEl.addEventListener('touchend',e=>{
     const dy=e.changedTouches[0].clientY-cty;
-    const dx=e.changedTouches[0].clientX-ctx2;
-    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)){ changeMonth(dx<0?1:-1); return; }
-    if(dy>80&&Math.abs(dy)>Math.abs(dx)){ _doRefresh(); }
+    const dx=Math.abs(e.changedTouches[0].clientX-ctx2);
+    if(Math.abs(dy)>55&&Math.abs(dy)>dx){ changeMonth(dy<0?1:-1); }
   },{passive:true});
 
-  // 주간 캘린더: 좌우 스와이프 → 날짜 이동 / 아래↓ 스와이프 → 새로고침
+  // 주간 캘린더: 좌우 스와이프 → 날짜 이동
   const wcEl=document.getElementById('wcalWrap');
   let wsx=0, wsy=0;
   wcEl.addEventListener('touchstart',e=>{
@@ -2458,9 +2454,8 @@ function initSwipeGestures(){
   },{passive:true});
   wcEl.addEventListener('touchend',e=>{
     const dx=e.changedTouches[0].clientX-wsx;
-    const dy=e.changedTouches[0].clientY-wsy;
-    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)){ changeMonth(dx<0?1:-1); return; }
-    if(dy>80&&Math.abs(dy)>Math.abs(dx)){ _doRefresh(); }
+    const dy=Math.abs(e.changedTouches[0].clientY-wsy);
+    if(Math.abs(dx)>55&&Math.abs(dx)>dy){ changeMonth(dx<0?1:-1); }
   },{passive:true});
 }
 
