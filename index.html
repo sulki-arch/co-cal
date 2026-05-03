@@ -1507,6 +1507,34 @@ function renderWeek(){
   });
 }
 
+function _wcLayout(evs){
+  if(!evs.length) return [];
+  const toMin=t=>{
+    if(!t) return 0;
+    return (parseInt(t.slice(0,2))||0)*60+(parseInt(t.slice(3,5))||0);
+  };
+  const items=evs.map(ev=>{
+    const startMin=toMin(ev.startTime);
+    const endMin=ev.endTime?Math.max(toMin(ev.endTime),startMin+15):startMin+60;
+    return {ev,startMin,endMin,col:0};
+  }).sort((a,b)=>a.startMin-b.startMin||(b.endMin-b.startMin)-(a.endMin-a.startMin));
+  // assign columns greedily
+  const colEnds=[];
+  items.forEach(item=>{
+    let c=colEnds.findIndex(e=>e<=item.startMin);
+    if(c===-1){c=colEnds.length; colEnds.push(item.endMin);}
+    else colEnds[c]=item.endMin;
+    item.col=c;
+  });
+  // calc totalCols per event = max col among all overlapping events +1
+  return items.map(item=>{
+    const totalCols=Math.max(...items
+      .filter(o=>o.startMin<item.endMin&&o.endMin>item.startMin)
+      .map(o=>o.col))+1;
+    return {ev:item.ev,col:item.col,totalCols};
+  });
+}
+
 function _wcAttNames(ev){
   const users=getUsers();
   return (ev.attendees||[]).map(uid=>{
@@ -1534,9 +1562,9 @@ function renderCatBar(){
 
 function toggleCat(id){
   if(hiddenCats.has(id)) hiddenCats.delete(id); else hiddenCats.add(id);
-  renderCatBar(); renderCal();
+  renderCatBar(); if(viewMode==='week') renderWeek(); else renderCal();
 }
-function toggleAllCats(){ hiddenCats.clear(); renderCatBar(); renderCal(); }
+function toggleAllCats(){ hiddenCats.clear(); renderCatBar(); if(viewMode==='week') renderWeek(); else renderCal(); }
 
 /* ═══════════════════════════════════════
    8.  DRAWER
@@ -2108,7 +2136,7 @@ function renderScopeBar(){
 
 function toggleScope(sk){
   if(hiddenScopes.has(sk)) hiddenScopes.delete(sk); else hiddenScopes.add(sk);
-  renderScopeBar(); renderCal();
+  renderScopeBar(); if(viewMode==='week') renderWeek(); else renderCal();
 }
 
 /* ═══════════════════════════════════════
