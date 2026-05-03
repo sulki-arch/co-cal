@@ -454,8 +454,8 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 
   <!-- Weekly Calendar -->
   <div id="wcalWrap" style="display:none">
-    <div class="wc-allday-bar" id="wcAlldayBar"></div>
     <div class="wc-day-hdr" id="wcDayHdr"></div>
+    <div class="wc-allday-bar" id="wcAlldayBar"></div>
     <div class="wc-scroll" id="wcScroll">
       <div class="wc-inner" id="wcInner"></div>
     </div>
@@ -524,11 +524,11 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
     <input id="evTxt" type="text" placeholder="일정 제목">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div><label class="fl">시작 날짜</label><input id="evStartDate" type="date"></div>
-      <div><label class="fl">시작 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><input id="evStartTime" type="time"></div>
+      <div><label class="fl">시작 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><select id="evStartTime"></select></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div><label class="fl">종료 날짜</label><input id="evEndDate" type="date"></div>
-      <div><label class="fl">종료 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><input id="evEndTime" type="time"></div>
+      <div><label class="fl">종료 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><select id="evEndTime"></select></div>
     </div>
     <label class="fl">메모 <span style="font-weight:400;color:#bbb">(선택)</span></label>
     <textarea id="evMemo" placeholder="일정 메모..." style="height:68px;resize:none;line-height:1.6"></textarea>
@@ -1011,6 +1011,19 @@ async function init(){
   }
   // 기본 카테고리
   if(!_D.cats) setCats(DEFAULT_CATS);
+
+  // 시간 select 옵션 초기화 (24h, 10분 단위)
+  ['evStartTime','evEndTime'].forEach(id=>{
+    const sel=document.getElementById(id);
+    let opts='<option value="">시간 없음</option>';
+    for(let h=0;h<24;h++){
+      for(let m=0;m<60;m+=10){
+        const v=h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0');
+        opts+=`<option value="${v}">${v}</option>`;
+      }
+    }
+    sel.innerHTML=opts;
+  });
 
   // 키보드 이벤트
   ['lu','lp'].forEach(id=>{
