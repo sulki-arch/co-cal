@@ -454,8 +454,8 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 
   <!-- Weekly Calendar -->
   <div id="wcalWrap" style="display:none">
-    <div class="wc-allday-bar" id="wcAlldayBar"></div>
     <div class="wc-day-hdr" id="wcDayHdr"></div>
+    <div class="wc-allday-bar" id="wcAlldayBar"></div>
     <div class="wc-scroll" id="wcScroll">
       <div class="wc-inner" id="wcInner"></div>
     </div>
@@ -2433,8 +2433,32 @@ function saveProfile(){
 /* ═══════════════════════════════════════
    14c.  SWIPE GESTURES
 ═══════════════════════════════════════ */
+function _doRefresh(){
+  if(!_db){
+    renderCatBar(); renderScopeBar();
+    if(viewMode==='week') renderWeek(); else renderCal();
+    toast('새로고침됨');
+    return;
+  }
+  toast('새로고침 중...');
+  _db.ref('/cal').once('value').then(snap=>{
+    const d=snap.val()||{};
+    _D.users=fbArr(d.users); _D.events=fbArr(d.events);
+    _D.cats=d.cats?fbArr(d.cats):null;
+    const rawMedia=d.media||{}; _D.media={};
+    Object.keys(rawMedia).forEach(ds2=>{ _D.media[ds2]=fbArr(rawMedia[ds2]); });
+    _D.covers=d.covers??{}; _D.groups=fbArr(d.groups); _D.splash=d.splash??null;
+    renderCatBar(); renderScopeBar();
+    if(viewMode==='week') renderWeek(); else renderCal();
+    toast('✓ 새로고침 완료');
+  }).catch(()=>{
+    if(viewMode==='week') renderWeek(); else renderCal();
+    toast('새로고침됨');
+  });
+}
+
 function initSwipeGestures(){
-  // 월간 캘린더: 상하 스와이프 → 월 이동
+  // 월간 캘린더: 좌우 스와이프 → 월 이동 / 아래↓ 스와이프 → 새로고침
   const calEl=document.querySelector('.cal');
   let cty=0, ctx2=0;
   calEl.addEventListener('touchstart',e=>{
@@ -2442,11 +2466,12 @@ function initSwipeGestures(){
   },{passive:true});
   calEl.addEventListener('touchend',e=>{
     const dy=e.changedTouches[0].clientY-cty;
-    const dx=Math.abs(e.changedTouches[0].clientX-ctx2);
-    if(Math.abs(dy)>55&&Math.abs(dy)>dx){ changeMonth(dy<0?1:-1); }
+    const dx=e.changedTouches[0].clientX-ctx2;
+    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)){ changeMonth(dx<0?1:-1); return; }
+    if(dy>80&&Math.abs(dy)>Math.abs(dx)){ _doRefresh(); }
   },{passive:true});
 
-  // 주간 캘린더: 좌우 스와이프 → 날짜 이동
+  // 주간 캘린더: 좌우 스와이프 → 날짜 이동 / 아래↓ 스와이프 → 새로고침
   const wcEl=document.getElementById('wcalWrap');
   let wsx=0, wsy=0;
   wcEl.addEventListener('touchstart',e=>{
@@ -2454,8 +2479,9 @@ function initSwipeGestures(){
   },{passive:true});
   wcEl.addEventListener('touchend',e=>{
     const dx=e.changedTouches[0].clientX-wsx;
-    const dy=Math.abs(e.changedTouches[0].clientY-wsy);
-    if(Math.abs(dx)>55&&Math.abs(dx)>dy){ changeMonth(dx<0?1:-1); }
+    const dy=e.changedTouches[0].clientY-wsy;
+    if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)){ changeMonth(dx<0?1:-1); return; }
+    if(dy>80&&Math.abs(dy)>Math.abs(dx)){ _doRefresh(); }
   },{passive:true});
 }
 
