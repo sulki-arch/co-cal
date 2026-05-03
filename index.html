@@ -1377,57 +1377,62 @@ function renderWeek(){
   const days=[];
   for(let i=-1;i<=1;i++){ const d=new Date(wcCenterDate); d.setDate(d.getDate()+i); days.push(d); }
   const f=days[0],l=days[2];
-  document.getElementById('hmonth').textContent=`${f.getMonth()+1}/${f.getDate()} ~ ${l.getMonth()+1}/${l.getDate()}`;
+  document.getElementById('hmonth').textContent=(f.getMonth()+1)+'/'+f.getDate()+' ~ '+(l.getMonth()+1)+'/'+l.getDate();
   const events=getEvents(), cats=getCats();
 
-  // ── 요일 헤더 ──
   const hdr=document.getElementById('wcDayHdr');
-  hdr.innerHTML='<div></div>'+days.map(d=>{
+  let hdrHtml='<div></div>';
+  days.forEach(function(d){
     const ds=fd(d),dow=d.getDay(),isT=ds===todayStr;
     const cls=dow===0?'wc-sun':dow===6?'wc-sat':'';
-    return `<div class="wc-dh-cell ${cls}"><div class="wc-dh-name">${DAY[dow]}</div><div class="wc-dh-date${isT?' wc-today':''}">${d.getDate()}</div></div>`;
-  }).join('');
+    hdrHtml+='<div class="wc-dh-cell '+cls+'"><div class="wc-dh-name">'+DAY[dow]+'</div><div class="wc-dh-date'+(isT?' wc-today':'')+'" >'+d.getDate()+'</div></div>';
+  });
+  hdr.innerHTML=hdrHtml;
 
-  // ── 종일 바: 월간과 동일한 필터 (누락 없음) ──
   const allday=document.getElementById('wcAlldayBar');
-  const visEvs=events.filter(e=>canSeeEvent(e)&&!hiddenCats.has(e.categoryId));
-  const alldayDays=days.map(d=>{
+  const visEvs=events.filter(function(e){ return canSeeEvent(e)&&!hiddenCats.has(e.categoryId); });
+  const alldayDays=days.map(function(d){
     const ds=fd(d);
-    // 월간 캘린더와 동일 조건: sd<=ds<=ed
-    return visEvs.filter(e=>{
+    return visEvs.filter(function(e){
       const sd=e.startDate||e.date, ed=e.endDate||e.date;
       if(!(sd<=ds&&ds<=ed)) return false;
-      // 시간 있는 단일일 이벤트는 시간 그리드에 표시 (그리드 범위 안이면 생략)
       if(e.startTime){
         const sh=parseInt((e.startTime||'').slice(0,2))||0;
         const eh=e.endTime?parseInt(e.endTime.slice(0,2)):sh+1;
-        const sd2=e.startDate||e.date, ed2=e.endDate||e.date;
-        if(sd2===ed2&&sh>=WC_START&&eh<=WC_END) return false;
+        if(sd===ed&&sh>=WC_START&&eh<=WC_END) return false;
       }
       return true;
     });
   });
-  const hasAllday=alldayDays.some(arr=>arr.length>0);
+  const hasAllday=alldayDays.some(function(arr){ return arr.length>0; });
   if(hasAllday){
     allday.style.display='grid';
-    allday.innerHTML='<div class="wc-allday-lbl">종일</div>'+days.map((d,di)=>`<div class="wc-allday-cell">${alldayDays[di].map(ev=>{
-      const cat=cats.find(c=>c.id===ev.categoryId);
-      return `<div class="wc-allday-ev ${cat?cat.color:'c-blue'}" onclick="openEvDetail('${ev.id}')" title="${ev.title}">${ev.title}</div>`;
-    }).join('')}</div>`).join('');
+    let adHtml='<div class="wc-allday-lbl">종일</div>';
+    days.forEach(function(d,di){
+      adHtml+='<div class="wc-allday-cell">';
+      alldayDays[di].forEach(function(ev){
+        const cat=cats.find(function(c){ return c.id===ev.categoryId; });
+        const cls=cat?cat.color:'c-blue';
+        adHtml+='<div class="wc-allday-ev '+cls+'" onclick="openEvDetail(\''+ev.id+'\')" title="'+ev.title.replace(/"/g,'&quot;')+'">'+ev.title+'</div>';
+      });
+      adHtml+='</div>';
+    });
+    allday.innerHTML=adHtml;
   } else { allday.style.display='none'; }
 
-  // ── 시간 그리드 ──
   const inner=document.getElementById('wcInner');
   const prevScroll=document.getElementById('wcScroll').scrollTop;
   let html='';
   for(let h=WC_START;h<=WC_END;h++){
-    html+=`<div class="wc-time-label" style="height:${WC_HOUR_H}px">${h.toString().padStart(2,'0')}:00</div>`;
-    days.forEach(d=>{ const ds=fd(d),isT=ds===todayStr; html+=`<div class="wc-hour-cell${isT?' wc-today-col':''}" style="height:${WC_HOUR_H}px"></div>`; });
+    html+='<div class="wc-time-label" style="height:'+WC_HOUR_H+'px">'+String(h).padStart(2,'0')+':00</div>';
+    days.forEach(function(d){
+      const ds=fd(d),isT=ds===todayStr;
+      html+='<div class="wc-hour-cell'+(isT?' wc-today-col':'')+'" style="height:'+WC_HOUR_H+'px"></div>';
+    });
   }
   inner.innerHTML=html;
 
-  // ── 현재 시각 선 ──
-  const now=new Date(),nowDs=fd(now),nowDayIdx=days.findIndex(d=>fd(d)===nowDs);
+  const now=new Date(),nowDs=fd(now),nowDayIdx=days.findIndex(function(d){ return fd(d)===nowDs; });
   if(nowDayIdx>=0){
     const nowH=now.getHours(),nowM=now.getMinutes();
     if(nowH>=WC_START&&nowH<=WC_END){
@@ -1437,13 +1442,12 @@ function renderWeek(){
     }
   }
 
-  // ── 시간 있는 이벤트 블록 ──
-  requestAnimationFrame(()=>{
+  requestAnimationFrame(function(){
     const totalW=inner.offsetWidth||380, dayW=(totalW-40)/3;
-    visEvs.forEach(ev=>{
+    visEvs.forEach(function(ev){
       if(!ev.startTime) return;
       const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
-      days.forEach((d,di)=>{
+      days.forEach(function(d,di){
         const ds=fd(d);
         if(sd>ds||ds>ed) return;
         const sh=parseInt(ev.startTime.slice(0,2))||0;
@@ -1454,12 +1458,12 @@ function renderWeek(){
         const csh=Math.max(sh,WC_START),ceh=Math.min(eh,WC_END);
         const top=(csh-WC_START)*WC_HOUR_H+(sm/60*WC_HOUR_H);
         const height=Math.max(((ceh-csh)*60-sm+em)/60*WC_HOUR_H,22);
-        const cat=cats.find(c=>c.id===ev.categoryId);
+        const cat=cats.find(function(c){ return c.id===ev.categoryId; });
         const el=document.createElement('div');
         el.className='wc-ev '+(cat?cat.color:'c-blue');
-        el.style.cssText=`top:${top}px;left:${40+di*dayW+1}px;width:${dayW-2}px;height:${height}px`;
-        el.innerHTML=`<div class="wc-ev-name">${ev.title}</div>`;
-        el.onclick=()=>openEvDetail(ev.id);
+        el.style.cssText='top:'+top+'px;left:'+(40+di*dayW+1)+'px;width:'+(dayW-2)+'px;height:'+height+'px';
+        el.innerHTML='<div class="wc-ev-name">'+ev.title+'</div>';
+        el.onclick=function(){ openEvDetail(ev.id); };
         document.getElementById('wcInner').appendChild(el);
       });
     });
