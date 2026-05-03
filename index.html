@@ -56,11 +56,11 @@ body{font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Apple SD Gothi
 .dhdr{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--BD)}
 .dh{text-align:center;padding:7px 0;font-size:12px;font-weight:600;color:#888}
 .dh:first-child{color:var(--SUN)}.dh:last-child{color:var(--SAT)}
-.cgrid{display:grid;grid-template-columns:repeat(7,1fr)}
+.cgrid{display:flex;flex-direction:column}
 
-.dc{min-height:82px;border-right:1px solid #f2f2f2;border-bottom:1px solid #f2f2f2;padding:3px 2px 2px;cursor:pointer;overflow:visible;transition:background .1s}
+.dc{min-height:82px;border-right:1px solid #f2f2f2;border-bottom:1px solid #f2f2f2;padding:3px 2px 2px;cursor:pointer;overflow:hidden;transition:background .1s;min-width:0}
 .dc:hover{background:#f8faff}
-.dc:nth-child(7n){border-right:none}
+.cal-days .dc:nth-child(7n){border-right:none}
 .dnum{font-size:13px;font-weight:500;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin:0 auto 2px;border-radius:50%}
 .dc.today .dnum{background:var(--P);color:#fff;font-weight:700}
 .dc.sun .dnum{color:var(--SUN)}.dc.sat .dnum{color:var(--SAT)}
@@ -361,6 +361,12 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .chat-react-add{background:#f5f5f5;border:1.5px solid #e8e8e8;border-radius:20px;cursor:pointer;font-size:12px;padding:2px 8px;color:#aaa;transition:all .12s;font-family:inherit}
 .chat-react-picker{display:flex;gap:4px;padding:6px 8px;background:#fff;border:1.5px solid #e0e0e0;border-radius:14px;box-shadow:0 3px 12px rgba(0,0,0,.13);position:absolute;z-index:50;bottom:28px;left:0}
 .chat-react-picker button{background:none;border:none;font-size:20px;cursor:pointer;border-radius:6px;padding:2px 4px}
+
+.cal-week{}
+.cal-days{display:grid;grid-template-columns:repeat(7,1fr)}
+.cal-md-area{position:relative;overflow:hidden}
+.cal-md-bar{position:absolute;height:18px;border-radius:4px;font-size:10px;padding:1px 5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;line-height:16px;font-weight:600;border:1px solid rgba(255,255,255,.3)}
+.cal-md-bar:active{opacity:.8}
 </style>
 </head>
 <body>
@@ -1203,78 +1209,111 @@ function renderCal(){
   for(let d=1;d<=last;d++) cells.push({d:new Date(VY,VM,d),other:false});
   while(cells.length%7!==0){ const l=cells[cells.length-1].d; cells.push({d:new Date(l.getTime()+86400000),other:true}); }
 
-  cells.forEach(cell=>{
-    const ds=fd(cell.d);
-    const dow=cell.d.getDay();
-    // Filter & sort — 멀티데이 지원 (startDate <= day <= endDate)
-    let evs=events.filter(e=>{
-      const sd=e.startDate||e.date; const ed=e.endDate||e.date;
-      return sd<=ds && ds<=ed && !hiddenCats.has(e.categoryId) && canSeeEvent(e);
-    });
-    evs=sortEvs(evs,cats);
-    const m=media[ds]||[];
-    const stks=m.filter(x=>x.type==='sticker');
+  for(let row=0;row<cells.length/7;row++){
+    const rowCells=cells.slice(row*7,row*7+7);
+    const rowStart=fd(rowCells[0].d), rowEnd=fd(rowCells[6].d);
+    const weekDiv=document.createElement('div');
+    weekDiv.className='cal-week';
 
-    // 이벤트 커버포토 (해당 날에 시작하는 이벤트의 커버, 최대 2개)
-    const coverPhotos=[];
-    for(const ev of evs){
-      const sd=ev.startDate||ev.date;
-      if(sd===ds && ev.coverPhotoId && (ev.photos||[]).length){
-        const cp=ev.photos.find(p=>p.id===ev.coverPhotoId);
-        if(cp){ coverPhotos.push(cp); if(coverPhotos.length>=2) break; }
+    const mdEvs=events.filter(e=>{
+      const sd=e.startDate||e.date, ed=e.endDate||e.date;
+      if(sd>=ed) return false;
+      return sd<=rowEnd&&ed>=rowStart&&!hiddenCats.has(e.categoryId)&&canSeeEvent(e);
+    });
+    if(mdEvs.length){
+      const area=document.createElement('div');
+      area.className='cal-md-area';
+      const sorted=[...mdEvs].sort((a,b)=>{const as=a.startDate||a.date,bs=b.startDate||b.date;return as<bs?-1:as>bs?1:0;});
+      const slotEnds=[];
+      sorted.forEach(ev=>{
+        const cat=cats.find(c=>c.id===ev.categoryId);
+        const cls=cat?cat.color:(ev.color||'c-blue');
+        const evS=(ev.startDate||ev.date)<rowStart?rowStart:(ev.startDate||ev.date);
+        const evE=(ev.endDate||ev.date)>rowEnd?rowEnd:(ev.endDate||ev.date);
+        let slot=slotEnds.findIndex(end=>end<evS);
+        if(slot===-1) slot=slotEnds.length;
+        slotEnds[slot]=evE;
+        const cs=rowCells.findIndex(c=>fd(c.d)===evS);
+        const ce=rowCells.findIndex(c=>fd(c.d)===evE);
+        const colS=cs>=0?cs:0, colE=ce>=0?ce:6;
+        const span=colE-colS+1;
+        const isStart=(ev.startDate||ev.date)>=rowStart;
+        const isEnd=(ev.endDate||ev.date)<=rowEnd;
+        const bar=document.createElement('div');
+        bar.className='cal-md-bar '+cls;
+        let r='';
+        if(!isStart) r+='border-top-left-radius:0;border-bottom-left-radius:0;';
+        if(!isEnd) r+='border-top-right-radius:0;border-bottom-right-radius:0;';
+        bar.style.cssText=`left:calc(${colS}/7*100%);width:calc(${span}/7*100% - 4px);top:${slot*22+2}px;`+r;
+        bar.textContent=isStart?ev.title:'';
+        bar.title=ev.title;
+        bar.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
+        area.appendChild(bar);
+      });
+      area.style.height=`${slotEnds.length*22+6}px`;
+      weekDiv.appendChild(area);
+    }
+
+    const daysDiv=document.createElement('div');
+    daysDiv.className='cal-days';
+    rowCells.forEach(cell=>{
+      const ds=fd(cell.d), dow=cell.d.getDay();
+      let evs=events.filter(e=>{
+        const sd=e.startDate||e.date, ed=e.endDate||e.date;
+        if(sd<ed) return false;
+        return sd===ds&&!hiddenCats.has(e.categoryId)&&canSeeEvent(e);
+      });
+      evs=sortEvs(evs,cats);
+      const m=media[ds]||[], stks=m.filter(x=>x.type==='sticker');
+      const coverPhotos=[];
+      for(const ev of events){
+        const sd=ev.startDate||ev.date;
+        if(sd===ds&&ev.coverPhotoId&&(ev.photos||[]).length){
+          const cp=ev.photos.find(p=>p.id===ev.coverPhotoId);
+          if(cp){coverPhotos.push(cp);if(coverPhotos.length>=2)break;}
+        }
       }
-    }
-
-    const div=document.createElement('div');
-    const hasCover=coverPhotos.length>0;
-    const hasCover2=coverPhotos.length>=2;
-    div.className='dc'+(cell.other?' other':'')+(dow===0?' sun':'')+(dow===6?' sat':'')+(ds===today?' today':'')
-      +(hasCover2?' has-cover-2':hasCover?' has-cover':'');
-    if(hasCover2){
-      div.style.backgroundImage=`url(${coverPhotos[0].data}),url(${coverPhotos[1].data})`;
-      div.style.backgroundSize='50% 100%,50% 100%';
-      div.style.backgroundPosition='left center,right center';
-      div.style.backgroundRepeat='no-repeat,no-repeat';
-    } else if(hasCover){
-      div.style.backgroundImage=`url(${coverPhotos[0].data})`;
-    }
-
-    // 날짜 숫자 + 스티커 좌/우
-    const dnRow=document.createElement('div');
-    dnRow.className='dc-stk-row';
-    if(stks[0]){ const sl=document.createElement('span'); sl.className='dc-stk'; sl.textContent=stks[0].data; dnRow.appendChild(sl); }
-    const dn=document.createElement('div'); dn.className='dnum'; dn.textContent=cell.d.getDate();
-    dnRow.appendChild(dn);
-    if(stks[1]){ const sr=document.createElement('span'); sr.className='dc-stk'; sr.textContent=stks[1].data; dnRow.appendChild(sr); }
-    div.appendChild(dnRow);
-
-    // Events (max 2) — 이름만, 시간 없음
-    evs.forEach(ev=>{
-      const cat=cats.find(c=>c.id===ev.categoryId);
-      const cls=cat?cat.color:(ev.color||'c-blue');
-      const isGrp=(ev.scope||'all')!=='all';
-      const isStart=(ev.startDate||ev.date)===ds;
-      const attCnt=(ev.attendees||[]).length;
-      const p=document.createElement('div');
-      p.className='ep '+cls+(isGrp?' ep-grp':'')+(isStart?'':' ep-cont');
-      p.textContent=ev.title+(attCnt?' 👥'+attCnt:'');
-      p.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
-      div.appendChild(p);
+      const div=document.createElement('div');
+      const hasCover=coverPhotos.length>0, hasCover2=coverPhotos.length>=2;
+      div.className='dc'+(cell.other?' other':'')+(dow===0?' sun':'')+(dow===6?' sat':'')+(ds===today?' today':'')
+        +(hasCover2?' has-cover-2':hasCover?' has-cover':'');
+      if(hasCover2){
+        div.style.backgroundImage=`url(${coverPhotos[0].data}),url(${coverPhotos[1].data})`;
+        div.style.backgroundSize='50% 100%,50% 100%';
+        div.style.backgroundPosition='left center,right center';
+        div.style.backgroundRepeat='no-repeat,no-repeat';
+      } else if(hasCover){ div.style.backgroundImage=`url(${coverPhotos[0].data})`; }
+      const dnRow=document.createElement('div');
+      dnRow.className='dc-stk-row';
+      if(stks[0]){const sl=document.createElement('span');sl.className='dc-stk';sl.textContent=stks[0].data;dnRow.appendChild(sl);}
+      const dn=document.createElement('div');dn.className='dnum';dn.textContent=cell.d.getDate();
+      dnRow.appendChild(dn);
+      if(stks[1]){const sr=document.createElement('span');sr.className='dc-stk';sr.textContent=stks[1].data;dnRow.appendChild(sr);}
+      div.appendChild(dnRow);
+      evs.forEach(ev=>{
+        const cat=cats.find(c=>c.id===ev.categoryId);
+        const cls=cat?cat.color:(ev.color||'c-blue');
+        const isGrp=(ev.scope||'all')!=='all';
+        const attCnt=(ev.attendees||[]).length;
+        const p=document.createElement('div');
+        p.className='ep '+cls+(isGrp?' ep-grp':'');
+        p.textContent=ev.title+(attCnt?' 👥'+attCnt:'');
+        p.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
+        div.appendChild(p);
+      });
+      const photoCnt=evs.reduce((acc,ev)=>acc+(ev.photos||[]).length,0);
+      if(photoCnt){
+        const mr=document.createElement('div');mr.className='cmedia';
+        const pb=document.createElement('span');pb.className='cm-photo';pb.textContent=`📷${photoCnt}`;
+        mr.appendChild(pb);div.appendChild(mr);
+      }
+      div.onclick=()=>openDd(cell.d,ds);
+      daysDiv.appendChild(div);
     });
-
-    // 사진 수 (이벤트 전체)
-    const photoCnt=evs.reduce((acc,ev)=>acc+(ev.photos||[]).length,0);
-    if(photoCnt){
-      const mr=document.createElement('div'); mr.className='cmedia';
-      const pb=document.createElement('span'); pb.className='cm-photo'; pb.textContent=`📷${photoCnt}`;
-      mr.appendChild(pb); div.appendChild(mr);
-    }
-
-    div.onclick=()=>openDd(cell.d,ds);
-    grid.appendChild(div);
-  });
+    weekDiv.appendChild(daysDiv);
+    grid.appendChild(weekDiv);
+  }
 }
-
 function fd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 
 function sortEvs(evs,cats){
@@ -1364,7 +1403,7 @@ function renderWeek(){
   const allday=document.getElementById('wcAlldayBar');
   const alldayEvs=events.filter(e=>{
     if(!canSeeEvent(e)||hiddenCats.has(e.categoryId)) return false;
-    return !e.startTime; // 시간 없는 이벤트
+    const _sd2=e.startDate||e.date,_ed2=e.endDate||e.date; return !e.startTime||_ed2>_sd2;
   });
   if(alldayEvs.length){
     allday.style.display='grid';
@@ -1417,36 +1456,33 @@ function renderWeek(){
     const totalW=inner.offsetWidth||380;
     const dayW=(totalW-40)/3;
 
-    events.forEach(ev=>{
-      if(!canSeeEvent(ev)||hiddenCats.has(ev.categoryId)) return;
-      if(!ev.startTime) return; // 종일은 위에서 처리
-      const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
-
-      days.forEach((d,di)=>{
-        const ds=fd(d);
-        if(sd>ds||ds>ed) return;
-
+    days.forEach((d,di)=>{
+      const ds=fd(d);
+      const dayTimedEvs=events.filter(ev=>{
+        if(!canSeeEvent(ev)||hiddenCats.has(ev.categoryId)) return false;
+        if(!ev.startTime) return false;
+        const sd=ev.startDate||ev.date, ed=ev.endDate||ev.date;
+        return sd<=ds&&ds<=ed;
+      });
+      _wcLayout(dayTimedEvs).forEach(({ev,col,totalCols})=>{
         const sh=parseInt(ev.startTime.slice(0,2))||0;
         const sm=parseInt(ev.startTime.slice(3,5))||0;
         const eh=ev.endTime?parseInt(ev.endTime.slice(0,2)):sh+1;
         const em=ev.endTime?parseInt(ev.endTime.slice(3,5)):0;
-
         if(sh>WC_END||eh<WC_START) return;
         const csh=Math.max(sh,WC_START), ceh=Math.min(eh,WC_END);
-
         const top=(csh-WC_START)*WC_HOUR_H+(sm/60*WC_HOUR_H);
         const durMin=Math.max((ceh-csh)*60-sm+em,15);
         const height=Math.max(durMin/60*WC_HOUR_H,22);
-        const left=40+di*dayW+1;
-        const width=dayW-2;
-
+        const colW=dayW/totalCols;
+        const left=40+di*dayW+col*colW+1;
+        const width=colW-2;
         const cat=cats.find(c=>c.id===ev.categoryId);
         const cls=cat?cat.color:'c-blue';
         const attCnt=(ev.attendees||[]).length;
         const chatCnt=(ev.chat||[]).length;
         const attNames=_wcAttNames(ev);
         const memoSnip=ev.memo?ev.memo.slice(0,100)+(ev.memo.length>100?'…':''):'';
-
         const el=document.createElement('div');
         el.className='wc-ev '+cls;
         el.style.cssText=`top:${top}px;left:${left}px;width:${width}px;height:${height}px`;
@@ -1454,11 +1490,9 @@ function renderWeek(){
         if(height>24){
           const attStr=attCnt?(attNames?`👥${attCnt} (${attNames})`:`👥${attCnt}`):'';
           const chatStr=chatCnt?`💬${chatCnt}`:'';
-          if(attStr||chatStr)
-            inner2+=`<div class="wc-ev-meta">${[attStr,chatStr].filter(Boolean).join('　')}</div>`;
+          if(attStr||chatStr) inner2+=`<div class="wc-ev-meta">${[attStr,chatStr].filter(Boolean).join('　')}</div>`;
         }
-        if(height>36&&memoSnip)
-          inner2+=`<div class="wc-ev-meta">📝 ${memoSnip}</div>`;
+        if(height>36&&memoSnip) inner2+=`<div class="wc-ev-meta">📝 ${memoSnip}</div>`;
         el.innerHTML=inner2;
         el.onclick=()=>openEvDetail(ev.id);
         document.getElementById('wcInner').appendChild(el);
