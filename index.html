@@ -1403,7 +1403,9 @@ function renderWeek(){
   const allday=document.getElementById('wcAlldayBar');
   const alldayEvs=events.filter(e=>{
     if(!canSeeEvent(e)||hiddenCats.has(e.categoryId)) return false;
-    const _sd2=e.startDate||e.date,_ed2=e.endDate||e.date; return !e.startTime||_ed2>_sd2;
+    if(!e.startTime) return true;
+    const _sd=e.startDate||e.date, _ed=e.endDate||e.date;
+    return _ed>_sd;
   });
   if(alldayEvs.length){
     allday.style.display='grid';
@@ -1534,9 +1536,9 @@ function renderCatBar(){
 
 function toggleCat(id){
   if(hiddenCats.has(id)) hiddenCats.delete(id); else hiddenCats.add(id);
-  renderCatBar(); renderCal();
+  renderCatBar(); if(viewMode==='week') renderWeek(); else renderCal();
 }
-function toggleAllCats(){ hiddenCats.clear(); renderCatBar(); renderCal(); }
+function toggleAllCats(){ hiddenCats.clear(); renderCatBar(); if(viewMode==='week') renderWeek(); else renderCal(); }
 
 /* ═══════════════════════════════════════
    8.  DRAWER
@@ -2108,7 +2110,7 @@ function renderScopeBar(){
 
 function toggleScope(sk){
   if(hiddenScopes.has(sk)) hiddenScopes.delete(sk); else hiddenScopes.add(sk);
-  renderScopeBar(); renderCal();
+  renderScopeBar(); if(viewMode==='week') renderWeek(); else renderCal();
 }
 
 /* ═══════════════════════════════════════
