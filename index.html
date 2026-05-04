@@ -244,6 +244,27 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .dc.has-cover-2 .dnum{position:relative;z-index:1;background:rgba(0,0,0,.38)!important;color:#fff!important}
 .dc.has-cover-2 .ep{background:rgba(0,0,0,.38)!important;color:#fff!important}
 
+/* ── ALLDAY TOGGLE ── */
+.allday-row{display:flex;align-items:center;gap:10px;margin:12px 0 2px}
+.allday-lbl{font-size:12px;font-weight:600;color:#666}
+.tog-track{width:42px;height:24px;border-radius:12px;background:#e0e0e0;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0}
+.tog-track.on{background:var(--P)}
+.tog-thumb{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18);transition:left .2s}
+.tog-track.on .tog-thumb{left:21px}
+
+/* ── DATE / TIME ROW ── */
+.dt-row{display:flex;align-items:center;gap:6px;margin-top:5px}
+.dt-date{flex:1;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;color:#222;background:#fff;outline:none;font-family:inherit;transition:border-color .2s;min-width:0}
+.dt-date:focus{border-color:var(--P)}
+.dt-twrap{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.dt-seg{padding:10px 4px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;color:#222;background:#fff;outline:none;font-family:inherit;transition:border-color .2s;width:54px;text-align:center;-webkit-appearance:none;appearance:none;cursor:pointer}
+.dt-seg:focus{border-color:var(--P)}
+.dt-colon{font-size:15px;font-weight:700;color:#aaa;flex-shrink:0;margin:0 1px}
+.dt-twrap.hidden{display:none}
+
+/* ── SCOPE HINT ── */
+.scope-hint{font-size:11px;color:#bbb;margin-top:5px;line-height:1.5;min-height:14px}
+
 /* ── VIEW TOGGLE ── */
 .view-toggle{display:flex;gap:3px;align-items:center}
 .vt-btn{background:none;border:1.5px solid #e0e0e0;border-radius:10px;font-size:11px;font-weight:600;padding:2px 8px;cursor:pointer;color:#aaa;font-family:inherit;transition:all .15s;line-height:1.6}
@@ -522,20 +543,38 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
     <div class="bs-t" id="evMT">일정 추가</div>
     <label class="fl">제목</label>
     <input id="evTxt" type="text" placeholder="일정 제목">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><label class="fl">시작 날짜</label><input id="evStartDate" type="date"></div>
-      <div><label class="fl">시작 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><select id="evStartTime"></select></div>
+    <!-- 종일 토글 -->
+    <div class="allday-row">
+      <span class="allday-lbl">종일</span>
+      <div class="tog-track" id="allDayTrack" onclick="toggleAllDay()"><div class="tog-thumb"></div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><label class="fl">종료 날짜</label><input id="evEndDate" type="date"></div>
-      <div><label class="fl">종료 시간 <span style="font-weight:400;color:#bbb">(선택)</span></label><select id="evEndTime"></select></div>
+    <!-- 시작 -->
+    <label class="fl">시작</label>
+    <div class="dt-row">
+      <input id="evStartDate" type="date" class="dt-date">
+      <div class="dt-twrap" id="evStartTWrap">
+        <select id="evStartHour" class="dt-seg"></select>
+        <span class="dt-colon">:</span>
+        <select id="evStartMin" class="dt-seg"></select>
+      </div>
+    </div>
+    <!-- 종료 -->
+    <label class="fl">종료</label>
+    <div class="dt-row">
+      <input id="evEndDate" type="date" class="dt-date">
+      <div class="dt-twrap" id="evEndTWrap">
+        <select id="evEndHour" class="dt-seg"></select>
+        <span class="dt-colon">:</span>
+        <select id="evEndMin" class="dt-seg"></select>
+      </div>
     </div>
     <label class="fl">메모 <span style="font-weight:400;color:#bbb">(선택)</span></label>
     <textarea id="evMemo" placeholder="일정 메모..." style="height:68px;resize:none;line-height:1.6"></textarea>
     <label class="fl">카테고리</label>
     <select id="evCat"></select>
     <label class="fl">공개 범위</label>
-    <select id="evScope"></select>
+    <select id="evScope" onchange="updateScopeHint()"></select>
+    <div class="scope-hint" id="evScopeHint"></div>
     <div class="bs-acts">
       <button class="btn btn-s" onclick="closeM('evM')">취소</button>
       <button class="btn btn-d" id="evDel" style="display:none" onclick="delEvent()">삭제</button>
@@ -760,6 +799,8 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
     <div class="bs-t" id="grpEMT">새 그룹 만들기</div>
     <label class="fl">그룹 이름</label>
     <input id="grpEName" type="text" placeholder="예: 테니스팀 A조">
+    <label class="fl">그룹 색상</label>
+    <div class="cpick" id="grpCPick"></div>
     <label class="fl">멤버 선택</label>
     <div class="mem-list" id="memList"></div>
     <div class="ferr" id="grpErr"></div>
@@ -818,6 +859,8 @@ let viewMode='month', wcCenterDate=null;
 const WC_HOUR_H=36, WC_START=6, WC_END=22;
 let editEvId=null, editUsId=null, editCatId=null, editGrpId=null;
 let selCatColor='c-blue';
+let grpSelColor='c-orange';
+let evAllDay=false;
 let ddDate=null;
 let hiddenCats=new Set();
 let hiddenScopes=new Set();
@@ -1012,16 +1055,17 @@ async function init(){
   // 기본 카테고리
   if(!_D.cats) setCats(DEFAULT_CATS);
 
-  // 시간 select 옵션 초기화 (24h, 10분 단위)
-  ['evStartTime','evEndTime'].forEach(id=>{
+  // 시간 select 옵션 초기화 — 시/분 분리 (24h, 10분 단위)
+  ['evStartHour','evEndHour'].forEach(id=>{
     const sel=document.getElementById(id);
-    let opts='<option value="">시간 없음</option>';
-    for(let h=0;h<24;h++){
-      for(let m=0;m<60;m+=10){
-        const v=h.toString().padStart(2,'0')+':'+m.toString().padStart(2,'0');
-        opts+=`<option value="${v}">${v}</option>`;
-      }
-    }
+    let opts='<option value="">--</option>';
+    for(let h=0;h<24;h++) opts+=`<option value="${h.toString().padStart(2,'0')}">${h.toString().padStart(2,'0')}</option>`;
+    sel.innerHTML=opts;
+  });
+  ['evStartMin','evEndMin'].forEach(id=>{
+    const sel=document.getElementById(id);
+    let opts='<option value="">--</option>';
+    for(let m=0;m<60;m+=10) opts+=`<option value="${m.toString().padStart(2,'0')}">${m.toString().padStart(2,'0')}</option>`;
     sel.innerHTML=opts;
   });
 
@@ -2029,33 +2073,47 @@ function openEvModal(evId,dateStr){
     `<option value="all">📢 전체 공유</option>`+
     myGrps.map(g=>`<option value="grp_${g.id}">👥 ${g.name}</option>`).join('');
 
+  // 시/분 파싱 헬퍼
+  const setHM=(hId,mId,timeStr)=>{
+    const [h,m]=(timeStr||'').split(':');
+    document.getElementById(hId).value=h||'';
+    document.getElementById(mId).value=m||'';
+  };
   if(evId){
     const ev=getEvents().find(e=>e.id===evId);
     if(!ev) return;
     document.getElementById('evMT').textContent='일정 수정';
     document.getElementById('evTxt').value=ev.title;
     document.getElementById('evStartDate').value=ev.startDate||ev.date;
-    document.getElementById('evStartTime').value=ev.startTime||ev.time||'';
+    setHM('evStartHour','evStartMin',ev.startTime||ev.time||'');
     document.getElementById('evEndDate').value=ev.endDate||ev.date;
-    document.getElementById('evEndTime').value=ev.endTime||'';
+    setHM('evEndHour','evEndMin',ev.endTime||'');
     document.getElementById('evMemo').value=ev.memo||'';
     document.getElementById('evCat').value=ev.categoryId||cats[0]?.id||'';
     document.getElementById('evScope').value=ev.scope||'all';
     document.getElementById('evDel').style.display='inline-block';
+    evAllDay=!!(ev.allDay);
     closeM('ddM'); closeM('evDM');
   } else {
     document.getElementById('evMT').textContent='일정 추가';
     document.getElementById('evTxt').value='';
     const defDate=dateStr||fd(new Date());
     document.getElementById('evStartDate').value=defDate;
-    document.getElementById('evStartTime').value='';
+    setHM('evStartHour','evStartMin','');
     document.getElementById('evEndDate').value=defDate;
-    document.getElementById('evEndTime').value='';
+    setHM('evEndHour','evEndMin','');
     document.getElementById('evMemo').value='';
     document.getElementById('evCat').value=cats[0]?.id||'';
     document.getElementById('evScope').value='all';
     document.getElementById('evDel').style.display='none';
+    evAllDay=false;
   }
+  // 종일 토글 UI 반영
+  const track=document.getElementById('allDayTrack');
+  if(evAllDay) track.classList.add('on'); else track.classList.remove('on');
+  document.getElementById('evStartTWrap').classList.toggle('hidden',evAllDay);
+  document.getElementById('evEndTWrap').classList.toggle('hidden',evAllDay);
+  updateScopeHint();
   openM('evM');
   setTimeout(()=>document.getElementById('evTxt').focus(),260);
 }
@@ -2063,12 +2121,17 @@ function openEvModal(evId,dateStr){
 function saveEvent(){
   const title=document.getElementById('evTxt').value.trim();
   const startDate=document.getElementById('evStartDate').value;
-  const startTime=document.getElementById('evStartTime').value;
   const endDate=document.getElementById('evEndDate').value;
-  const endTime=document.getElementById('evEndTime').value;
   const memo=document.getElementById('evMemo').value.trim();
   const categoryId=document.getElementById('evCat').value;
   const scope=document.getElementById('evScope').value||'all';
+  // 시/분 조합
+  const sh=document.getElementById('evStartHour').value;
+  const sm=document.getElementById('evStartMin').value;
+  const eh=document.getElementById('evEndHour').value;
+  const em=document.getElementById('evEndMin').value;
+  const startTime=evAllDay?'':(sh&&sm?sh+':'+sm:'');
+  const endTime=evAllDay?'':(eh&&em?eh+':'+em:'');
   if(!title){ toast('제목을 입력하세요'); return; }
   if(!startDate){ toast('시작 날짜를 선택하세요'); return; }
   const ed=endDate||startDate;
@@ -2076,11 +2139,11 @@ function saveEvent(){
   const evs=getEvents();
   if(editEvId){
     const i=evs.findIndex(e=>e.id===editEvId);
-    if(i!==-1) evs[i]={...evs[i],title,startDate,startTime,endDate:ed,endTime,memo,categoryId,scope};
+    if(i!==-1) evs[i]={...evs[i],title,startDate,startTime,endDate:ed,endTime,memo,categoryId,scope,allDay:evAllDay};
     toast('일정이 수정되었습니다');
   } else {
     evs.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
-      title,startDate,startTime,endDate:ed,endTime,memo,categoryId,scope,
+      title,startDate,startTime,endDate:ed,endTime,memo,categoryId,scope,allDay:evAllDay,
       createdBy:CU.id,attendees:[],chat:[],photos:[],coverPhotoId:null});
     toast('일정이 추가되었습니다');
   }
@@ -2090,6 +2153,28 @@ function delEvent(){
   if(!editEvId||!confirm('이 일정을 삭제할까요?')) return;
   setEvents(getEvents().filter(e=>e.id!==editEvId));
   closeM('evM'); renderCal(); toast('일정이 삭제되었습니다');
+}
+
+function toggleAllDay(){
+  evAllDay=!evAllDay;
+  const track=document.getElementById('allDayTrack');
+  if(evAllDay) track.classList.add('on'); else track.classList.remove('on');
+  document.getElementById('evStartTWrap').classList.toggle('hidden',evAllDay);
+  document.getElementById('evEndTWrap').classList.toggle('hidden',evAllDay);
+}
+
+function updateScopeHint(){
+  const scope=document.getElementById('evScope').value||'all';
+  const hint=document.getElementById('evScopeHint');
+  if(!scope||scope==='all'){ hint.textContent=''; return; }
+  if(scope.startsWith('grp_')){
+    const gid=scope.slice(4);
+    const grp=getGroups().find(g=>g.id===gid);
+    if(!grp){ hint.textContent=''; return; }
+    const users=getUsers();
+    const names=users.filter(u=>grp.members.includes(u.id)).map(u=>u.name);
+    hint.textContent=names.length?names.join(', '):'멤버 없음';
+  } else { hint.textContent=''; }
 }
 
 /* ═══════════════════════════════════════
@@ -2140,8 +2225,11 @@ function renderScopeBar(){
   myGrps.forEach(g=>{
     const sk='grp_'+g.id;
     const on=!hiddenScopes.has(sk);
-    h+=`<div class="sc-chip ${on?'on-grp':''}" onclick="toggleScope('${sk}')">`;
-    if(on) h+=`<div class="sc-dot" style="background:#ffa726"></div>`;
+    const grpBg=CBG[g.color]||'#ffcc80';
+    // 칩 인라인 색상 (활성 시)
+    const chipStyle=on?`background:${grpBg}22;border-color:${grpBg};color:#333`:'';
+    h+=`<div class="sc-chip ${on?'on-grp':''}" style="${chipStyle}" onclick="toggleScope('${sk}')">`;
+    if(on) h+=`<div class="sc-dot" style="background:${grpBg}"></div>`;
     h+=`${g.name}</div>`;
   });
   bar.innerHTML=h;
@@ -2168,7 +2256,9 @@ function renderGroupList(){
   el.innerHTML=myGrps.map(g=>{
     const names=users.filter(u=>g.members.includes(u.id)).map(u=>u.name).join(', ');
     const canEditGrp=CU.role==='admin'||g.createdBy===CU.id;
+    const swatchBg=CBG[g.color]||'#ffcc80';
     return `<div class="cat-item">
+      <div class="cat-swatch" style="background:${swatchBg}"></div>
       <div style="flex:1;min-width:0">
         <div class="cat-name">${g.name}</div>
         <div style="font-size:11px;color:#aaa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${names||'멤버 없음'}</div>
@@ -2182,20 +2272,36 @@ function openGrpEdit(gid){
   editGrpId=gid;
   grpSelMembers=new Set();
   document.getElementById('grpErr').textContent='';
+  // 색상 피커 빌드
+  document.getElementById('grpCPick').innerHTML=COLORS.map(c=>
+    `<div class="copt" data-cc="${c.cls}" style="background:${c.bg}" onclick="pickGrpColor('${c.cls}',this)" title="${c.label}"></div>`
+  ).join('');
   if(gid){
     const grp=getGroups().find(g=>g.id===gid); if(!grp) return;
     document.getElementById('grpEMT').textContent='그룹 수정';
     document.getElementById('grpEName').value=grp.name;
     grpSelMembers=new Set(grp.members);
+    grpSelColor=grp.color||'c-orange';
     document.getElementById('grpEDel').style.display='inline-block';
   } else {
     document.getElementById('grpEMT').textContent='새 그룹 만들기';
     document.getElementById('grpEName').value='';
     grpSelMembers=new Set([CU.id]);
+    grpSelColor='c-orange';
     document.getElementById('grpEDel').style.display='none';
   }
+  // 선택 색상 표시
+  document.querySelectorAll('#grpCPick .copt').forEach(e=>{
+    if(e.dataset.cc===grpSelColor) e.classList.add('sel'); else e.classList.remove('sel');
+  });
   renderMemList();
   openM('grpEM');
+}
+
+function pickGrpColor(cls,el){
+  grpSelColor=cls;
+  document.querySelectorAll('#grpCPick .copt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
 }
 
 function renderMemList(){
@@ -2225,11 +2331,11 @@ function saveGroup(){
   const grps=getGroups();
   if(editGrpId){
     const i=grps.findIndex(g=>g.id===editGrpId); if(i===-1) return;
-    grps[i]={...grps[i],name,members:[...grpSelMembers]};
+    grps[i]={...grps[i],name,members:[...grpSelMembers],color:grpSelColor};
     toast('그룹이 수정되었습니다');
   } else {
     grps.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,4),
-      name,members:[...grpSelMembers],createdBy:CU.id,createdAt:Date.now()});
+      name,members:[...grpSelMembers],color:grpSelColor,createdBy:CU.id,createdAt:Date.now()});
     toast('그룹이 생성되었습니다 👥');
   }
   setGroups(grps);
