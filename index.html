@@ -194,6 +194,29 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .cat-add-btn{width:100%;padding:13px;border:2px dashed #ddd;background:none;border-radius:12px;color:#aaa;font-size:14px;cursor:pointer;margin-top:12px;font-family:inherit;transition:all .2s}
 .cat-add-btn:hover{border-color:var(--P);color:var(--P)}
 
+/* ── GROUP COLOR DOTS (group list inline) ── */
+.grp-color-row{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap}
+.grp-color-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:all .15s;flex-shrink:0}
+.grp-color-dot:active{transform:scale(.9)}
+.grp-color-dot.sel{border-color:#333;box-shadow:0 0 0 1px #fff inset}
+
+/* ── DRAWER AVATAR (photo) ── */
+.d-av{overflow:hidden}
+.d-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
+.d-av .d-av-icon{display:flex;align-items:center;justify-content:center;font-size:22px;width:100%;height:100%}
+
+/* ── DRAWER HEAD BG ── */
+#dHead{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;position:relative}
+#dHead::before{content:'';position:absolute;inset:0;background:rgba(0,0,0,.35);pointer-events:none;opacity:0;transition:opacity .2s}
+#dHead.has-bg::before{opacity:1}
+#dHead.has-bg .d-name,#dHead.has-bg .d-role{position:relative;z-index:1}
+#dHead.has-bg .d-av{position:relative;z-index:1}
+
+/* ── PROFILE BG PREVIEW ── */
+.prof-bg-prev{width:100%;height:72px;border-radius:12px;background:var(--P);display:flex;align-items:center;justify-content:center;font-size:12px;color:rgba(255,255,255,.8);margin-top:6px;background-size:cover;background-position:center;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:border-color .2s}
+.prof-bg-prev:hover{border-color:var(--P)}
+.prof-bg-clear{padding:0 14px;font-size:12px;flex-shrink:0;white-space:nowrap}
+
 /* ── MEMBER SELECTOR (group edit) ── */
 .mem-list{max-height:180px;overflow-y:auto;border:1.5px solid #e0e0e0;border-radius:10px;margin-top:4px}
 .mem-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #f5f5f5;cursor:pointer;transition:background .12s}
@@ -230,7 +253,7 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ── MULTI-DAY EVENT PILL ── */
-.ep.ep-cont{opacity:.6;border-left:3px solid currentColor}
+.ep.ep-cont{opacity:.65;border-left:3px solid rgba(0,0,0,.18);font-style:italic}
 .attend-count{font-size:9px;font-weight:700;margin-left:3px;opacity:.85;flex-shrink:0}
 
 /* ── CELL STICKER ROW ── */
@@ -493,8 +516,11 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 
 <!-- ═══ DRAWER ═══ -->
 <div class="drawer" id="drawer">
-  <div class="d-head">
-    <div class="d-av">👤</div>
+  <div class="d-head" id="dHead">
+    <div class="d-av" id="dAv">
+      <img id="dAvImg" src="" alt="">
+      <span class="d-av-icon" id="dAvIcon">👤</span>
+    </div>
     <div class="d-name" id="dname"></div>
     <div class="d-role" id="drole"></div>
   </div>
@@ -686,9 +712,19 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
         <span class="pa-icon" id="profAvatarIcon">👤</span>
         <img id="profAvatarImg" src="" alt="">
       </div>
-      <button class="btn btn-s" style="font-size:12px;padding:4px 12px" onclick="document.getElementById('profAvatarInput').click()">📷 사진 등록</button>
+      <button class="btn btn-s" style="font-size:12px;padding:4px 12px" onclick="document.getElementById('profAvatarInput').click()">📷 프로필 사진</button>
       <input id="profAvatarInput" type="file" accept="image/*" style="display:none" onchange="handleProfPhoto(this)">
     </div>
+    <!-- 사이드바 배경 -->
+    <label class="fl">사이드바 배경 <span style="font-weight:400;color:#bbb">(선택)</span></label>
+    <div class="prof-bg-prev" id="profBgPrev" onclick="document.getElementById('profBgInput').click()">
+      <span id="profBgLabel">탭해서 배경 사진 등록</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:7px">
+      <button class="btn btn-s" style="flex:1;font-size:12px" onclick="document.getElementById('profBgInput').click()">📷 배경 사진 변경</button>
+      <button class="btn btn-d prof-bg-clear" id="profBgClear" onclick="clearDrawerBg()">✕ 제거</button>
+    </div>
+    <input id="profBgInput" type="file" accept="image/*" style="display:none" onchange="handleDrawerBg(this)">
     <label class="fl">아이디 <span style="font-weight:400;color:#bbb">(변경 불가)</span></label>
     <input id="profIdDisp" type="text" disabled style="background:#f5f5f5;color:#999">
     <label class="fl">닉네임</label>
@@ -1234,6 +1270,7 @@ function showApp(){
   // 뷰어 배너
   document.getElementById('viewerBanner').classList.toggle('show',isV);
   const now=new Date(); VY=now.getFullYear(); VM=now.getMonth();
+  updateDrawerHead();
   renderCatBar();
   renderScopeBar();
   renderCal();
@@ -1268,59 +1305,29 @@ function renderCal(){
 
   for(let row=0;row<cells.length/7;row++){
     const rowCells=cells.slice(row*7,row*7+7);
-    const rowStart=fd(rowCells[0].d), rowEnd=fd(rowCells[6].d);
     const weekDiv=document.createElement('div');
     weekDiv.className='cal-week';
-
-    const mdEvs=events.filter(e=>{
-      const sd=e.startDate||e.date, ed=e.endDate||e.date;
-      if(sd>=ed) return false;
-      return sd<=rowEnd&&ed>=rowStart&&!hiddenCats.has(e.categoryId)&&canSeeEvent(e);
-    });
-    if(mdEvs.length){
-      const area=document.createElement('div');
-      area.className='cal-md-area';
-      const sorted=[...mdEvs].sort((a,b)=>{const as=a.startDate||a.date,bs=b.startDate||b.date;return as<bs?-1:as>bs?1:0;});
-      const slotEnds=[];
-      sorted.forEach(ev=>{
-        const cat=cats.find(c=>c.id===ev.categoryId);
-        const cls=cat?cat.color:(ev.color||'c-blue');
-        const evS=(ev.startDate||ev.date)<rowStart?rowStart:(ev.startDate||ev.date);
-        const evE=(ev.endDate||ev.date)>rowEnd?rowEnd:(ev.endDate||ev.date);
-        let slot=slotEnds.findIndex(end=>end<evS);
-        if(slot===-1) slot=slotEnds.length;
-        slotEnds[slot]=evE;
-        const cs=rowCells.findIndex(c=>fd(c.d)===evS);
-        const ce=rowCells.findIndex(c=>fd(c.d)===evE);
-        const colS=cs>=0?cs:0, colE=ce>=0?ce:6;
-        const span=colE-colS+1;
-        const isStart=(ev.startDate||ev.date)>=rowStart;
-        const isEnd=(ev.endDate||ev.date)<=rowEnd;
-        const bar=document.createElement('div');
-        bar.className='cal-md-bar '+cls;
-        let r='';
-        if(!isStart) r+='border-top-left-radius:0;border-bottom-left-radius:0;';
-        if(!isEnd) r+='border-top-right-radius:0;border-bottom-right-radius:0;';
-        bar.style.cssText=`left:calc(${colS}/7*100%);width:calc(${span}/7*100% - 4px);top:${slot*22+2}px;`+r;
-        bar.textContent=isStart?ev.title:'';
-        bar.title=ev.title;
-        bar.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
-        area.appendChild(bar);
-      });
-      area.style.height=`${slotEnds.length*22+6}px`;
-      weekDiv.appendChild(area);
-    }
-
     const daysDiv=document.createElement('div');
     daysDiv.className='cal-days';
+
     rowCells.forEach(cell=>{
       const ds=fd(cell.d), dow=cell.d.getDay();
-      let evs=events.filter(e=>{
+
+      // 장기 일정 (startDate < endDate, 이 날짜 포함)
+      const multiEvs=events.filter(e=>{
+        const sd=e.startDate||e.date, ed=e.endDate||e.date;
+        if(sd>=ed) return false;
+        return sd<=ds&&ed>=ds&&!hiddenCats.has(e.categoryId)&&canSeeEvent(e);
+      }).sort((a,b)=>{const as=a.startDate||a.date,bs=b.startDate||b.date;return as<bs?-1:as>bs?1:0;});
+
+      // 당일 단일 일정
+      let singleEvs=events.filter(e=>{
         const sd=e.startDate||e.date, ed=e.endDate||e.date;
         if(sd<ed) return false;
         return sd===ds&&!hiddenCats.has(e.categoryId)&&canSeeEvent(e);
       });
-      evs=sortEvs(evs,cats);
+      singleEvs=sortEvs(singleEvs,cats);
+
       const m=media[ds]||[], stks=m.filter(x=>x.type==='sticker');
       const coverPhotos=[];
       for(const ev of events){
@@ -1340,6 +1347,8 @@ function renderCal(){
         div.style.backgroundPosition='left center,right center';
         div.style.backgroundRepeat='no-repeat,no-repeat';
       } else if(hasCover){ div.style.backgroundImage=`url(${coverPhotos[0].data})`; }
+
+      // 날짜 + 스티커 행
       const dnRow=document.createElement('div');
       dnRow.className='dc-stk-row';
       if(stks[0]){const sl=document.createElement('span');sl.className='dc-stk';sl.textContent=stks[0].data;dnRow.appendChild(sl);}
@@ -1347,7 +1356,28 @@ function renderCal(){
       dnRow.appendChild(dn);
       if(stks[1]){const sr=document.createElement('span');sr.className='dc-stk';sr.textContent=stks[1].data;dnRow.appendChild(sr);}
       div.appendChild(dnRow);
-      evs.forEach(ev=>{
+
+      // ① 장기 일정 (날짜 바로 아래)
+      const MAX_EV=3;
+      let shown=0;
+      multiEvs.forEach(ev=>{
+        if(shown>=MAX_EV) return;
+        const cat=cats.find(c=>c.id===ev.categoryId);
+        const cls=cat?cat.color:(ev.color||'c-blue');
+        const isGrp=(ev.scope||'all')!=='all';
+        const isCont=(ev.startDate||ev.date)<ds; // 이전 날부터 이어지는 경우
+        const p=document.createElement('div');
+        p.className='ep '+cls+(isCont?' ep-cont':'')+(isGrp?' ep-grp':'');
+        p.textContent=isCont?'▸ '+ev.title:ev.title;
+        p.title=ev.title;
+        p.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
+        div.appendChild(p);
+        shown++;
+      });
+
+      // ② 단일 일정
+      singleEvs.forEach(ev=>{
+        if(shown>=MAX_EV) return;
         const cat=cats.find(c=>c.id===ev.categoryId);
         const cls=cat?cat.color:(ev.color||'c-blue');
         const isGrp=(ev.scope||'all')!=='all';
@@ -1357,8 +1387,18 @@ function renderCal(){
         p.textContent=ev.title+(attCnt?' 👥'+attCnt:'');
         p.onclick=e=>{e.stopPropagation();openEvDetail(ev.id);};
         div.appendChild(p);
+        shown++;
       });
-      const photoCnt=evs.reduce((acc,ev)=>acc+(ev.photos||[]).length,0);
+
+      const totalEvs=multiEvs.length+singleEvs.length;
+      if(totalEvs>MAX_EV){
+        const more=document.createElement('div');more.className='ep-more';
+        more.textContent=`+${totalEvs-MAX_EV}`;
+        more.onclick=e=>{e.stopPropagation();openDd(cell.d,ds);};
+        div.appendChild(more);
+      }
+
+      const photoCnt=singleEvs.reduce((acc,ev)=>acc+(ev.photos||[]).length,0);
       if(photoCnt){
         const mr=document.createElement('div');mr.className='cmedia';
         const pb=document.createElement('span');pb.className='cm-photo';pb.textContent=`📷${photoCnt}`;
@@ -2253,17 +2293,25 @@ function renderGroupList(){
     el.innerHTML='<div class="dd-empty">그룹이 없습니다</div>';
     return;
   }
+  const isAdmin=CU.role==='admin';
   el.innerHTML=myGrps.map(g=>{
     const names=users.filter(u=>g.members.includes(u.id)).map(u=>u.name).join(', ');
-    const canEditGrp=CU.role==='admin'||g.createdBy===CU.id;
+    const canEditGrp=isAdmin||g.createdBy===CU.id;
     const swatchBg=CBG[g.color]||'#ffcc80';
-    return `<div class="cat-item">
-      <div class="cat-swatch" style="background:${swatchBg}"></div>
-      <div style="flex:1;min-width:0">
-        <div class="cat-name">${g.name}</div>
-        <div style="font-size:11px;color:#aaa;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${names||'멤버 없음'}</div>
+    // 관리자: 색상 도트 직접 변경 행
+    const colorRow=isAdmin?`<div class="grp-color-row">
+      ${COLORS.map(c=>`<div class="grp-color-dot${g.color===c.cls?' sel':''}" style="background:${c.bg}" onclick="event.stopPropagation();quickSetGrpColor('${g.id}','${c.cls}')" title="${c.label}"></div>`).join('')}
+    </div>`:'';
+    return `<div class="cat-item" style="flex-direction:column;align-items:flex-start;gap:4px;padding:10px 0">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div class="cat-swatch" style="background:${swatchBg};flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div class="cat-name">${g.name}</div>
+          <div style="font-size:11px;color:#aaa;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${names||'멤버 없음'}</div>
+        </div>
+        ${canEditGrp?`<button class="cat-edit-btn" onclick="openGrpEdit('${g.id}')">✏️</button>`:''}
       </div>
-      ${canEditGrp?`<button class="cat-edit-btn" onclick="openGrpEdit('${g.id}')">✏️</button>`:''}
+      ${colorRow}
     </div>`;
   }).join('');
 }
@@ -2302,6 +2350,16 @@ function pickGrpColor(cls,el){
   grpSelColor=cls;
   document.querySelectorAll('#grpCPick .copt').forEach(e=>e.classList.remove('sel'));
   el.classList.add('sel');
+}
+
+function quickSetGrpColor(gid,cls){
+  const grps=getGroups();
+  const i=grps.findIndex(g=>g.id===gid); if(i===-1) return;
+  grps[i]={...grps[i],color:cls};
+  setGroups(grps);
+  renderGroupList();
+  renderScopeBar();
+  toast('그룹 색상이 변경되었습니다');
 }
 
 function renderMemList(){
@@ -2546,6 +2604,24 @@ function handleProfPhoto(input){
   reader.readAsDataURL(file);
 }
 
+function updateDrawerHead(){
+  if(!CU) return;
+  // 아바타 이미지
+  const img=document.getElementById('dAvImg');
+  const icon=document.getElementById('dAvIcon');
+  if(CU.avatar){ img.src=CU.avatar; img.style.display='block'; icon.style.display='none'; }
+  else { img.style.display='none'; icon.style.display=''; }
+  // 배경 이미지
+  const dHead=document.getElementById('dHead');
+  if(CU.drawerBg){
+    dHead.style.backgroundImage=`url(${CU.drawerBg})`;
+    dHead.classList.add('has-bg');
+  } else {
+    dHead.style.backgroundImage='';
+    dHead.classList.remove('has-bg');
+  }
+}
+
 function openProfile(){
   if(!CU||CU.role==='viewer') return;
   document.getElementById('profIdDisp').value=CU.username||CU.id;
@@ -2553,11 +2629,61 @@ function openProfile(){
   document.getElementById('profPw').value='';
   document.getElementById('profErr').textContent='';
   window._profPhotoData=null;
+  window._drawerBgData=undefined; // undefined = 변경 없음
+  // 프로필 사진
   const imgEl=document.getElementById('profAvatarImg');
   if(CU.avatar){ imgEl.src=CU.avatar; imgEl.style.display='block'; document.getElementById('profAvatarIcon').style.display='none'; }
   else { imgEl.style.display='none'; document.getElementById('profAvatarIcon').style.display='block'; }
+  // 배경 미리보기
+  _refreshBgPreview();
   openM('profM');
 }
+
+function _refreshBgPreview(){
+  const prev=document.getElementById('profBgPrev');
+  const lbl=document.getElementById('profBgLabel');
+  const clr=document.getElementById('profBgClear');
+  // window._drawerBgData: undefined=변경없음, null=제거, string=새이미지
+  const bg = window._drawerBgData !== undefined ? window._drawerBgData : (CU.drawerBg||null);
+  if(bg){
+    prev.style.backgroundImage=`url(${bg})`;
+    lbl.style.display='none';
+    clr.style.display='';
+  } else {
+    prev.style.backgroundImage='';
+    lbl.style.display='';
+    clr.style.display='none';
+  }
+}
+
+function handleDrawerBg(inp){
+  const file=inp.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      c.width=600; c.height=240;
+      const ctx=c.getContext('2d');
+      // 가득 채우기 (cover)
+      const ratio=Math.max(600/img.width,240/img.height);
+      const w=img.width*ratio, h=img.height*ratio;
+      ctx.drawImage(img,(600-w)/2,(240-h)/2,w,h);
+      window._drawerBgData=c.toDataURL('image/jpeg',0.82);
+      _refreshBgPreview();
+      toast('배경 사진이 등록되었습니다');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  inp.value='';
+}
+
+function clearDrawerBg(){
+  window._drawerBgData=null; // null = 삭제 의도
+  _refreshBgPreview();
+}
+
 function saveProfile(){
   const name=document.getElementById('profName').value.trim();
   const pw=document.getElementById('profPw').value;
@@ -2569,10 +2695,15 @@ function saveProfile(){
   const updated={...users[i],name};
   if(pw) updated.password=pw;
   if(window._profPhotoData) updated.avatar=window._profPhotoData;
+  if(window._drawerBgData !== undefined){
+    if(window._drawerBgData) updated.drawerBg=window._drawerBgData;
+    else delete updated.drawerBg;
+  }
   users[i]=updated;
   setUsers(users);
   CU=updated;
   document.getElementById('dname').textContent=CU.name;
+  updateDrawerHead();
   closeM('profM');
   toast('프로필이 저장되었습니다 ✓');
 }
