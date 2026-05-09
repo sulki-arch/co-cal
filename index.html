@@ -3,10 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>개인 캘린더</title>
+<title>공유 캘린더</title>
+<!-- PWA -->
+<link rel="manifest" href="/co-cal/manifest.json">
+<meta name="theme-color" content="#1a73e8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="캘린더">
+<link rel="apple-touch-icon" href="/co-cal/apple-touch-icon.png">
 <!-- Firebase SDK (Realtime Database) — v8 UMD, gstatic 공식 CDN -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
 <!-- Noto Sans KR -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -915,14 +924,30 @@ let splashPhoto=null; // temp storage during splash edit
 const FIREBASE_DB_URL = 'https://sul-co-cal-default-rtdb.asia-southeast1.firebasedatabase.app';
 
 let _db = null;
+let _storage = null;
 (function(){
   try{
     if(FIREBASE_DB_URL.includes('YOUR-PROJECT')) return;
     firebase.initializeApp({databaseURL:FIREBASE_DB_URL});
     _db = firebase.database();
-    console.log('Firebase _db ready');
-  }catch(e){ console.warn('Firebase init failed:',e); _db=null; }
+    _storage = firebase.storage();
+    console.log('Firebase _db + storage ready');
+  }catch(e){ console.warn('Firebase init failed:',e); _db=null; _storage=null; }
 })();
+
+/* Storage 업로드 헬퍼 — 실패 시 base64 원본 반환 (하위 호환) */
+async function uploadToStorage(dataURL, path){
+  if(!_storage) return dataURL;
+  try{
+    const ref=_storage.ref(path);
+    await ref.putString(dataURL,'data_url');
+    return await ref.getDownloadURL();
+  }catch(e){ console.warn('Storage upload failed, using base64:',e); return dataURL; }
+}
+async function deleteFromStorage(url){
+  if(!_storage||!url||url.startsWith('data:')) return;
+  try{ await _storage.refFromURL(url).delete(); }catch(e){ /* 이미 없으면 무시 */ }
+}
 
 // 인메모리 데이터 캐시
 let _D = {users:[],events:[],cats:null,media:{},covers:{},groups:[],splash:null};
@@ -1112,12 +1137,14 @@ async function init(){
     });
   });
 
-  // 사진 입력 핸들러
+  // 사진 입력 핸들러 (날짜별)
   document.getElementById('photoIn').addEventListener('change',async e=>{
     const file=e.target.files[0]; if(!file) return;
-    toast('사진을 처리 중...');
-    const data=await compressImage(file);
-    addMediaItem(ddDate,{type:'photo',data});
+    toast('사진 업로드 중...');
+    const dataURL=await compressImage(file);
+    const ts=Date.now();
+    const url=await uploadToStorage(dataURL,`photos/day/${ddDate}/${ts}.jpg`);
+    addMediaItem(ddDate,{type:'photo',data:url});
     e.target.value='';
     refreshDd();
     toast('사진이 추가되었습니다');
@@ -1126,9 +1153,11 @@ async function init(){
   // 이벤트 사진 핸들러
   document.getElementById('evPhotoIn').addEventListener('change',async e=>{
     const file=e.target.files[0]; if(!file) return;
-    toast('사진을 처리 중...');
-    const data=await compressImage(file);
-    addEvPhoto(data);
+    toast('사진 업로드 중...');
+    const dataURL=await compressImage(file);
+    const ts=Date.now();
+    const url=await uploadToStorage(dataURL,`photos/ev/${detailEvId||'tmp'}/${ts}.jpg`);
+    addEvPhoto(url);
     e.target.value='';
   });
 
@@ -1963,6 +1992,8 @@ function delEvPhoto(photoId){
   const evs=getEvents();
   const i=evs.findIndex(e=>e.id===detailEvId); if(i===-1) return;
   const ev=evs[i];
+  const target=(ev.photos||[]).find(p=>p.id===photoId);
+  if(target) deleteFromStorage(target.data); // Storage 정리
   const photos=(ev.photos||[]).filter(p=>p.id!==photoId);
   const coverPhotoId=ev.coverPhotoId===photoId?null:ev.coverPhotoId;
   evs[i]={...ev,photos,coverPhotoId};
@@ -2008,6 +2039,8 @@ function addMediaItem(ds,item){
 function delMediaItem(ds,id){
   const m=getMedia();
   if(!m[ds]) return;
+  const target=m[ds].find(x=>x.id===id);
+  if(target&&target.type==='photo') deleteFromStorage(target.data); // Storage 정리
   m[ds]=m[ds].filter(x=>x.id!==id);
   if(!m[ds].length) delete m[ds];
   setMedia(m);
@@ -2694,10 +2727,17 @@ function saveProfile(){
   if(i===-1){err.textContent='사용자 정보를 찾을 수 없습니다';return;}
   const updated={...users[i],name};
   if(pw) updated.password=pw;
-  if(window._profPhotoData) updated.avatar=window._profPhotoData;
+  // 프로필 사진 → Storage 업로드
+  if(window._profPhotoData){
+    toast('프로필 사진 업로드 중...');
+    updated.avatar=await uploadToStorage(window._profPhotoData,`avatars/${CU.id}.jpg`);
+  }
+  // 배경 이미지 → Storage 업로드
   if(window._drawerBgData !== undefined){
-    if(window._drawerBgData) updated.drawerBg=window._drawerBgData;
-    else delete updated.drawerBg;
+    if(window._drawerBgData){
+      toast('배경 사진 업로드 중...');
+      updated.drawerBg=await uploadToStorage(window._drawerBgData,`bgs/${CU.id}.jpg`);
+    } else { delete updated.drawerBg; }
   }
   users[i]=updated;
   setUsers(users);
@@ -2758,6 +2798,15 @@ function toast(msg){
 ═══════════════════════════════════════ */
 init();
 initSwipeGestures();
+
+/* ── PWA 서비스 워커 등록 ── */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/co-cal/sw.js',{scope:'/co-cal/'})
+      .then(r=>console.log('SW 등록됨:',r.scope))
+      .catch(e=>console.warn('SW 등록 실패:',e));
+  });
+}
 </script>
 </body>
 </html>
