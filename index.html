@@ -2717,7 +2717,7 @@ function clearDrawerBg(){
   _refreshBgPreview();
 }
 
-function saveProfile(){
+async function saveProfile(){
   const name=document.getElementById('profName').value.trim();
   const pw=document.getElementById('profPw').value;
   const err=document.getElementById('profErr');
