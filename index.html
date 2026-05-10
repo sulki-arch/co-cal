@@ -257,6 +257,14 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 #lbox img{max-width:95vw;max-height:90vh;border-radius:10px;object-fit:contain}
 #lbox-close{position:absolute;top:16px;right:18px;background:rgba(255,255,255,.18);color:#fff;border:none;font-size:26px;width:40px;height:40px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
+/* ── ATTENDEE CHIPS ── */
+.att-chip{display:inline-flex;align-items:center;gap:5px;background:#f5f5f5;border-radius:20px;padding:3px 10px 3px 4px;margin:2px 3px;cursor:pointer;font-size:12px;color:#333;font-weight:600;transition:background .15s}
+.att-chip:hover{background:#e8f0fe}
+.att-chip-av{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
+
+/* ── USER PROFILE VIEW MODAL ── */
+#uprofM .bs{border-radius:24px 24px 0 0;text-align:center}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,30,.9);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;transition:all .28s;z-index:950;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -721,7 +729,10 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
         <span class="pa-icon" id="profAvatarIcon">👤</span>
         <img id="profAvatarImg" src="" alt="">
       </div>
-      <button class="btn btn-s" style="font-size:12px;padding:4px 12px" onclick="document.getElementById('profAvatarInput').click()">📷 프로필 사진</button>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:6px">
+        <button class="btn btn-s" style="font-size:12px;padding:4px 12px" onclick="document.getElementById('profAvatarInput').click()">📷 사진 변경</button>
+        <button id="profAvatarDelBtn" class="btn btn-d" style="font-size:12px;padding:4px 12px;display:none" onclick="clearProfAvatar()">🗑 사진 삭제</button>
+      </div>
       <input id="profAvatarInput" type="file" accept="image/*" style="display:none" onchange="handleProfPhoto(this)">
     </div>
     <!-- 사이드바 배경 -->
@@ -744,6 +755,22 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
     <div class="bs-acts">
       <button class="btn btn-s" onclick="closeM('profM')">취소</button>
       <button class="btn btn-p" onclick="saveProfile()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 사용자 프로필 확대 모달 ═══ -->
+<div class="bso" id="uprofM" onclick="if(event.target===this)closeM('uprofM')">
+  <div class="bs" style="max-height:auto;padding-bottom:40px;text-align:center">
+    <div class="bs-h"></div>
+    <div style="width:200px;height:200px;border-radius:50%;overflow:hidden;margin:0 auto 16px;background:#f0f0f0;border:3px solid #e8e8e8">
+      <img id="uprofAvatar" src="" alt="" style="width:100%;height:100%;object-fit:cover">
+    </div>
+    <div id="uprofName" style="font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:4px"></div>
+    <div id="uprofId" style="font-size:13px;color:#aaa;margin-bottom:10px"></div>
+    <span id="uprofBadge" style="font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;display:inline-block"></span>
+    <div style="margin-top:20px">
+      <button class="btn btn-s" onclick="closeM('uprofM')">닫기</button>
     </div>
   </div>
 </div>
@@ -872,6 +899,37 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 ═══════════════════════════════════════ */
 const UK='shcal_u', EK='shcal_e', CK='shcal_c', MK='shcal_m', TK='shcal_t', SPK='shcal_sp', CVK='shcal_cv', GK='shcal_g';
 const TOKEN_MS = 90*24*60*60*1000;
+
+/* ── 동물 아바타 목록 (50개) ── */
+const AVATAR_LIST=[
+  'avatars/01_cat.png','avatars/02_elephant.png','avatars/03_dog.png',
+  'avatars/04_giraffe.png','avatars/05_rat.png','avatars/06_koala.png',
+  'avatars/07_mole.png','avatars/08_kangaroo.png','avatars/09_walrus.png',
+  'avatars/10_otter.png','avatars/11_baboon.png','avatars/12_dark_elephant.png',
+  'avatars/13_frog.png','avatars/14_mouse.png','avatars/15_rabbit.png',
+  'avatars/16_leopard.png','avatars/17_hippo.png','avatars/18_fox.png',
+  'avatars/19_camel.png','avatars/20_hamster.png','avatars/21_pig.png',
+  'avatars/22_goat.png','avatars/23_bat.png','avatars/24_cow.png',
+  'avatars/25_guinea_pig.png','avatars/26_tiger.png','avatars/27_bear.png',
+  'avatars/28_squirrel.png','avatars/29_crocodile.png','avatars/30_hedgehog.png',
+  'avatars/31_rooster.png','avatars/32_deer.png','avatars/33_lobster.png',
+  'avatars/34_reindeer.png','avatars/35_sheep.png','avatars/36_raccoon.png',
+  'avatars/37_turtle.png','avatars/38_brown_bat.png','avatars/39_toad.png',
+  'avatars/40_gorilla.png','avatars/41_horse.png','avatars/42_monkey.png',
+  'avatars/43_lion.png','avatars/44_bull.png','avatars/45_panda.png',
+  'avatars/46_stork.png','avatars/47_dark_mole.png','avatars/48_rat2.png',
+  'avatars/49_badger.png','avatars/50_shark.png'
+];
+/* 랜덤 아바타 선택 (현재 아바타 제외) */
+function pickRandomAvatar(excludeUrl=''){
+  const pool=AVATAR_LIST.filter(a=>!excludeUrl.includes(a));
+  const arr=pool.length?pool:AVATAR_LIST;
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+/* 사용자 아바타 URL 반환 */
+function getUserAvatar(u){
+  return u&&u.avatar?u.avatar:AVATAR_LIST[0];
+}
 
 const STICKERS=['🌸','🌺','🌻','🌹','🌷','🍀','🌿','🍁','🌈','⭐','☀️','🌙','❄️','🌊',
   '❤️','💙','💚','💛','💜','🧡','💗','💝','😊','🥰','😍','😎','🤩','🥳',
@@ -1092,6 +1150,18 @@ async function init(){
   if(users.some(u=>u.role==='guest')){
     users=users.map(u=>u.role==='guest'?{...u,role:'user'}:u);
     setUsers(users);
+  }
+  // 아바타 없는 사용자에게 랜덤 아바타 배정 (변경 로그 없음)
+  {
+    let avChanged=false;
+    users=getUsers().map(u=>{
+      if(!u.avatar||u.avatar.startsWith('data:')){
+        avChanged=true;
+        return {...u,avatar:pickRandomAvatar()};
+      }
+      return u;
+    });
+    if(avChanged) setUsers(users);
   }
   // 이벤트 구조 마이그레이션 (date/time → startDate/endDate, 새 필드 추가)
   {
@@ -1854,12 +1924,21 @@ function openEvDetail(evId){
 
 function _renderAttNames(ev){
   const users=getUsers();
-  const names=(ev.attendees||[]).map(uid=>{
+  const attendees=ev.attendees||[];
+  if(!attendees.length){
+    document.getElementById('evDAttNames').innerHTML='<span style="color:#ccc">아직 참석자가 없습니다</span>';
+    return;
+  }
+  const chips=attendees.map(uid=>{
     const u=users.find(x=>x.id===uid);
-    return u?u.name:uid;
-  });
-  document.getElementById('evDAttNames').textContent=
-    names.length ? '참석 ('+names.length+'명): '+names.join(', ') : '아직 참석자가 없습니다';
+    const name=u?u.name:uid;
+    const avSrc=u?getUserAvatar(u):'';
+    return `<span class="att-chip" onclick="openUserProfile('${uid}')">
+      ${avSrc?`<img src="${avSrc}" class="att-chip-av" alt="">`:''}
+      <span>${name}</span>
+    </span>`;
+  }).join('');
+  document.getElementById('evDAttNames').innerHTML=`<span style="font-size:12px;color:#999;margin-right:6px">참석 ${attendees.length}명</span>${chips}`;
 }
 
 function _renderEvPhotos(ev){
@@ -1889,14 +1968,15 @@ function _renderEvChat(ev){
     const canDel=isMine||(CU.role==='admin');
     const ts=new Date(msg.ts);
     const timeStr=ts.getHours().toString().padStart(2,'0')+':'+ts.getMinutes().toString().padStart(2,'0');
-    const avHtml=u&&u.avatar
-      ?`<div class="chat-avatar"><img src="${u.avatar}" alt=""></div>`
+    const avSrc=u?getUserAvatar(u):'';
+    const avHtml=avSrc
+      ?`<div class="chat-avatar" onclick="openUserProfile('${u?u.id:''}')" style="cursor:pointer"><img src="${avSrc}" alt=""></div>`
       :`<div class="chat-avatar">${nick.slice(0,1)}</div>`;
     const reacts=msg.reactions||{};
     const rb=Object.entries(reacts).filter(([,u])=>u.length>0).map(([e,u])=>`<button class="chat-react-btn${u.includes(CU.id)?' reacted':''}" onclick="toggleChatReaction('${msg.id}','${e}')">${e}<span class="react-cnt">${u.length}</span></button>`).join('');
     const db=canDel?`<button class="chat-del-btn" onclick="deleteChat('${msg.id}')" title="삭제">✕</button>`:'';
     return `<div class="chat-bubble${isMine?' chat-mine':''}" data-msgid="${msg.id}">
-      <div class="chat-hd">${avHtml}<div class="chat-nick">${nick}</div>${db}</div>
+      <div class="chat-hd">${avHtml}<div class="chat-nick" onclick="openUserProfile('${u?u.id:''}')" style="cursor:pointer">${nick}</div>${db}</div>
       <div class="chat-text">${msg.text.replace(/</g,'&lt;')}</div>
       <div class="chat-ts">${timeStr}</div>
       <div class="chat-react-row">${rb}<button class="chat-react-add" onclick="showReactPicker('${msg.id}',this)">+ 반응</button></div>
@@ -2591,7 +2671,7 @@ function saveUser(){
     toast('사용자가 수정되었습니다');
   } else {
     if(users.some(u=>u.username===uid)){err.textContent='이미 사용 중인 아이디입니다';return;}
-    users.push({id:Date.now().toString(36),name,username:uid,password:pw,role:'user'});
+    users.push({id:Date.now().toString(36),name,username:uid,password:pw,role:'user',avatar:pickRandomAvatar()});
     toast('사용자가 초대되었습니다 ✓');
   }
   setUsers(users); closeM('ueM'); renderUList();
@@ -2619,10 +2699,11 @@ function handleProfPhoto(input){
   reader.onload=e=>{
     const img=new Image();
     img.onload=()=>{
-      const size=200;
+      const size=200; // 최대 200×200px
       const c=document.createElement('canvas');
       c.width=size; c.height=size;
       const ctx=c.getContext('2d');
+      // 정사각형 크롭
       const minSide=Math.min(img.width,img.height);
       const sx=(img.width-minSide)/2, sy=(img.height-minSide)/2;
       ctx.drawImage(img,sx,sy,minSide,minSide,0,0,size,size);
@@ -2631,10 +2712,42 @@ function handleProfPhoto(input){
       imgEl.src=dataUrl; imgEl.style.display='block';
       document.getElementById('profAvatarIcon').style.display='none';
       window._profPhotoData=dataUrl;
+      // 삭제 버튼 표시 (방금 새 사진 등록)
+      const delBtn=document.getElementById('profAvatarDelBtn');
+      if(delBtn) delBtn.style.display='';
     };
     img.src=e.target.result;
   };
   reader.readAsDataURL(file);
+  input.value='';
+}
+function clearProfAvatar(){
+  window._profPhotoData=null; // null = 삭제 → 랜덤 재배정
+  // 미리보기: 랜덤 아바타 임시 표시
+  const preview=pickRandomAvatar(CU.avatar||'');
+  const imgEl=document.getElementById('profAvatarImg');
+  imgEl.src=preview; imgEl.style.display='block';
+  document.getElementById('profAvatarIcon').style.display='none';
+  const delBtn=document.getElementById('profAvatarDelBtn');
+  if(delBtn) delBtn.style.display='none';
+  toast('저장 시 새 랜덤 아바타가 배정됩니다');
+}
+
+/* ── 사용자 프로필 확대 보기 ── */
+function openUserProfile(uid){
+  if(!uid) return;
+  const u=getUsers().find(x=>x.id===uid);
+  if(!u) return;
+  const av=getUserAvatar(u);
+  const roleLabel=u.role==='admin'?'관리자':u.role==='viewer'?'뷰어':'멤버';
+  document.getElementById('uprofAvatar').src=av;
+  document.getElementById('uprofName').textContent=u.name||u.id;
+  document.getElementById('uprofId').textContent='@'+(u.username||u.id);
+  const badge=document.getElementById('uprofBadge');
+  badge.textContent=roleLabel;
+  badge.style.background=u.role==='admin'?'#fff3e0':u.role==='viewer'?'#f3e5f5':'#e3f2fd';
+  badge.style.color=u.role==='admin'?'#e65100':u.role==='viewer'?'#6a1b9a':'#1565c0';
+  openM('uprofM');
 }
 
 function updateDrawerHead(){
@@ -2661,12 +2774,17 @@ function openProfile(){
   document.getElementById('profName').value=CU.name||'';
   document.getElementById('profPw').value='';
   document.getElementById('profErr').textContent='';
-  window._profPhotoData=null;
-  window._drawerBgData=undefined; // undefined = 변경 없음
+  window._profPhotoData=undefined; // undefined=변경없음, null=삭제, string=새이미지
+  window._drawerBgData=undefined;
   // 프로필 사진
   const imgEl=document.getElementById('profAvatarImg');
+  const isCustom=CU.avatar&&!AVATAR_LIST.some(a=>CU.avatar.includes(a));
+  // 아바타가 있으면 항상 표시 (랜덤 아바타 포함)
   if(CU.avatar){ imgEl.src=CU.avatar; imgEl.style.display='block'; document.getElementById('profAvatarIcon').style.display='none'; }
   else { imgEl.style.display='none'; document.getElementById('profAvatarIcon').style.display='block'; }
+  // 직접 올린 사진일 때만 삭제 버튼 표시
+  const delBtn=document.getElementById('profAvatarDelBtn');
+  if(delBtn) delBtn.style.display=isCustom?'':'none';
   // 배경 미리보기
   _refreshBgPreview();
   openM('profM');
@@ -2727,8 +2845,11 @@ async function saveProfile(){
   if(i===-1){err.textContent='사용자 정보를 찾을 수 없습니다';return;}
   const updated={...users[i],name};
   if(pw) updated.password=pw;
-  // 프로필 사진 → Storage 업로드
-  if(window._profPhotoData){
+  // 프로필 사진 → Storage 업로드 / 삭제 시 랜덤 재배정
+  if(window._profPhotoData===null){
+    // 사진 삭제 → 랜덤 아바타 재배정 (현재와 다른 것으로)
+    updated.avatar=pickRandomAvatar(CU.avatar||'');
+  } else if(window._profPhotoData){
     toast('프로필 사진 업로드 중...');
     updated.avatar=await uploadToStorage(window._profPhotoData,`avatars/${CU.id}.jpg`);
   }
