@@ -262,15 +262,17 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .att-chip:hover{background:#e8f0fe}
 .att-chip-av{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
 
-/* ── USER PROFILE VIEW MODAL ── */
-#uprofM{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:rgba(0,0,0,.25)}
-#uprofM.open{display:flex}
-.uprof-card{background:#fff;border-radius:22px;padding:28px 28px 26px;width:270px;text-align:center;position:relative;box-shadow:0 12px 48px rgba(0,0,0,.22);animation:uprof-in .18s cubic-bezier(.4,0,.2,1)}
-@keyframes uprof-in{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
-.uprof-close{position:absolute;top:12px;right:12px;background:#f2f2f2;border:none;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;transition:background .12s;line-height:1}
-.uprof-close:hover{background:#e0e0e0}
-.uprof-av{width:160px;height:160px;border-radius:50%;overflow:hidden;margin:0 auto 14px;background:#f0f0f0;border:3px solid #e8e8e8;flex-shrink:0}
-.uprof-av img{width:100%;height:100%;object-fit:cover;display:block}
+/* ── USER PROFILE SLIDING PANEL (event detail 상단 내장) ── */
+#uprof-panel-wrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s cubic-bezier(.4,0,.2,1)}
+#uprof-panel-wrap.open{grid-template-rows:1fr}
+#uprof-panel{overflow:hidden}
+#uprof-panel > div{padding:16px 20px 14px;background:#f4f8ff;border-bottom:1.5px solid #e3ecff;position:relative}
+.uprof-av-sm{width:72px;height:72px;border-radius:50%;overflow:hidden;background:#e8e8e8;border:2.5px solid #d0d8f0;flex-shrink:0}
+.uprof-av-sm img{width:100%;height:100%;object-fit:cover;display:block}
+.uprof-close{background:#e8ecf5;border:none;border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;transition:background .12s;line-height:1;flex-shrink:0}
+.uprof-close:hover{background:#d0d8ee}
+/* 이벤트 본문 슬라이드 */
+#evDBody{transition:padding-top .3s cubic-bezier(.4,0,.2,1)}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,30,.9);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;transition:all .28s;z-index:950;pointer-events:none;white-space:nowrap}
@@ -766,22 +768,27 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
   </div>
 </div>
 
-<!-- ═══ 사용자 프로필 확대 팝업 (이벤트 모달 위에 표시) ═══ -->
-<div id="uprofM" onclick="if(event.target===this)closeM('uprofM')">
-  <div class="uprof-card">
-    <button class="uprof-close" onclick="closeM('uprofM')">✕</button>
-    <div class="uprof-av">
-      <img id="uprofAvatar" src="" alt="">
-    </div>
-    <div id="uprofName" style="font-size:19px;font-weight:700;color:#1a1a1a;margin-bottom:4px"></div>
-    <div id="uprofId" style="font-size:12px;color:#bbb;margin-bottom:12px"></div>
-    <span id="uprofBadge" style="font-size:12px;font-weight:700;padding:4px 16px;border-radius:20px;display:inline-block"></span>
-  </div>
-</div>
-
 <!-- ═══ EVENT DETAIL MODAL ═══ -->
 <div class="bso" id="evDM">
-  <div class="bs">
+  <div class="bs" style="padding-top:0">
+    <!-- 프로필 슬라이딩 패널 (상단 고정) -->
+    <div id="uprof-panel-wrap">
+      <div id="uprof-panel">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="uprof-av-sm">
+            <img id="uprofAvatar" src="" alt="">
+          </div>
+          <div style="flex:1;min-width:0">
+            <div id="uprofName" style="font-size:16px;font-weight:700;color:#1a1a1a;line-height:1.3"></div>
+            <div id="uprofId" style="font-size:12px;color:#bbb;margin-top:2px"></div>
+            <span id="uprofBadge" style="font-size:11px;font-weight:700;padding:3px 11px;border-radius:14px;display:inline-block;margin-top:6px"></span>
+          </div>
+          <button class="uprof-close" onclick="closeUserProfile()">✕</button>
+        </div>
+      </div>
+    </div>
+    <!-- 이벤트 상세 본문 -->
+    <div id="evDBody" style="padding:14px 0 0">
     <div class="bs-h"></div>
     <!-- 제목 + 수정 버튼 -->
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">
@@ -813,7 +820,8 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
       <input id="evDChatTxt" type="text" placeholder="메시지 입력..." onkeydown="if(event.key==='Enter')sendChat()">
       <button class="chat-send-btn" onclick="sendChat()">전송</button>
     </div>
-    <button class="btn btn-s" style="margin-top:14px;width:100%" onclick="closeM('evDM')">닫기</button>
+    <button class="btn btn-s" style="margin-top:14px;width:100%" onclick="closeUserProfile();closeM('evDM')">닫기</button>
+    </div><!-- /evDBody -->
   </div>
 </div>
 
@@ -1867,6 +1875,7 @@ let detailEvId=null;
 function openEvDetail(evId){
   const ev=getEvents().find(e=>e.id===evId); if(!ev) return;
   detailEvId=evId;
+  closeUserProfile(); // 새 이벤트 열 때 프로필 패널 리셋
 
   // 제목
   document.getElementById('evDTitle').textContent=ev.title;
@@ -2737,7 +2746,7 @@ function clearProfAvatar(){
   toast('저장 시 새 랜덤 아바타가 배정됩니다');
 }
 
-/* ── 사용자 프로필 확대 보기 (이벤트 모달 위에 팝업) ── */
+/* ── 사용자 프로필 슬라이딩 패널 ── */
 function openUserProfile(uid){
   if(!uid) return;
   const u=getUsers().find(x=>x.id===uid);
@@ -2752,15 +2761,11 @@ function openUserProfile(uid){
   badge.textContent=roleLabel;
   badge.style.background=u.role==='admin'?'#fff3e0':u.role==='viewer'?'#f3e5f5':'#e3f2fd';
   badge.style.color=u.role==='admin'?'#e65100':u.role==='viewer'?'#6a1b9a':'#1565c0';
-  // 이미 열려있으면 카드 애니메이션만 재실행 (연속 프로필 전환)
-  const card=document.querySelector('.uprof-card');
-  if(document.getElementById('uprofM').classList.contains('open')){
-    card.style.animation='none';
-    card.offsetHeight; // reflow 강제
-    card.style.animation='';
-  } else {
-    openM('uprofM');
-  }
+  // 패널 열기 (이미 열려있으면 내용만 교체, 애니메이션은 자연스럽게)
+  document.getElementById('uprof-panel-wrap').classList.add('open');
+}
+function closeUserProfile(){
+  document.getElementById('uprof-panel-wrap').classList.remove('open');
 }
 
 function updateDrawerHead(){
