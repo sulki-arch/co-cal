@@ -263,7 +263,14 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
 .att-chip-av{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
 
 /* ── USER PROFILE VIEW MODAL ── */
-#uprofM .bs{border-radius:24px 24px 0 0;text-align:center}
+#uprofM{display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:rgba(0,0,0,.25)}
+#uprofM.open{display:flex}
+.uprof-card{background:#fff;border-radius:22px;padding:28px 28px 26px;width:270px;text-align:center;position:relative;box-shadow:0 12px 48px rgba(0,0,0,.22);animation:uprof-in .18s cubic-bezier(.4,0,.2,1)}
+@keyframes uprof-in{from{transform:scale(.88);opacity:0}to{transform:scale(1);opacity:1}}
+.uprof-close{position:absolute;top:12px;right:12px;background:#f2f2f2;border:none;border-radius:50%;width:30px;height:30px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#666;transition:background .12s;line-height:1}
+.uprof-close:hover{background:#e0e0e0}
+.uprof-av{width:160px;height:160px;border-radius:50%;overflow:hidden;margin:0 auto 14px;background:#f0f0f0;border:3px solid #e8e8e8;flex-shrink:0}
+.uprof-av img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(30,30,30,.9);color:#fff;padding:10px 22px;border-radius:22px;font-size:14px;opacity:0;transition:all .28s;z-index:950;pointer-events:none;white-space:nowrap}
@@ -759,19 +766,16 @@ label.fl{display:block;font-size:12px;font-weight:600;color:#666;margin:14px 0 5
   </div>
 </div>
 
-<!-- ═══ 사용자 프로필 확대 모달 ═══ -->
-<div class="bso" id="uprofM" onclick="if(event.target===this)closeM('uprofM')">
-  <div class="bs" style="max-height:auto;padding-bottom:40px;text-align:center">
-    <div class="bs-h"></div>
-    <div style="width:200px;height:200px;border-radius:50%;overflow:hidden;margin:0 auto 16px;background:#f0f0f0;border:3px solid #e8e8e8">
-      <img id="uprofAvatar" src="" alt="" style="width:100%;height:100%;object-fit:cover">
+<!-- ═══ 사용자 프로필 확대 팝업 (이벤트 모달 위에 표시) ═══ -->
+<div id="uprofM" onclick="if(event.target===this)closeM('uprofM')">
+  <div class="uprof-card">
+    <button class="uprof-close" onclick="closeM('uprofM')">✕</button>
+    <div class="uprof-av">
+      <img id="uprofAvatar" src="" alt="">
     </div>
-    <div id="uprofName" style="font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:4px"></div>
-    <div id="uprofId" style="font-size:13px;color:#aaa;margin-bottom:10px"></div>
-    <span id="uprofBadge" style="font-size:12px;font-weight:700;padding:4px 14px;border-radius:20px;display:inline-block"></span>
-    <div style="margin-top:20px">
-      <button class="btn btn-s" onclick="closeM('uprofM')">닫기</button>
-    </div>
+    <div id="uprofName" style="font-size:19px;font-weight:700;color:#1a1a1a;margin-bottom:4px"></div>
+    <div id="uprofId" style="font-size:12px;color:#bbb;margin-bottom:12px"></div>
+    <span id="uprofBadge" style="font-size:12px;font-weight:700;padding:4px 16px;border-radius:20px;display:inline-block"></span>
   </div>
 </div>
 
@@ -2733,13 +2737,14 @@ function clearProfAvatar(){
   toast('저장 시 새 랜덤 아바타가 배정됩니다');
 }
 
-/* ── 사용자 프로필 확대 보기 ── */
+/* ── 사용자 프로필 확대 보기 (이벤트 모달 위에 팝업) ── */
 function openUserProfile(uid){
   if(!uid) return;
   const u=getUsers().find(x=>x.id===uid);
   if(!u) return;
   const av=getUserAvatar(u);
   const roleLabel=u.role==='admin'?'관리자':u.role==='viewer'?'뷰어':'멤버';
+  // 내용 업데이트
   document.getElementById('uprofAvatar').src=av;
   document.getElementById('uprofName').textContent=u.name||u.id;
   document.getElementById('uprofId').textContent='@'+(u.username||u.id);
@@ -2747,7 +2752,15 @@ function openUserProfile(uid){
   badge.textContent=roleLabel;
   badge.style.background=u.role==='admin'?'#fff3e0':u.role==='viewer'?'#f3e5f5':'#e3f2fd';
   badge.style.color=u.role==='admin'?'#e65100':u.role==='viewer'?'#6a1b9a':'#1565c0';
-  openM('uprofM');
+  // 이미 열려있으면 카드 애니메이션만 재실행 (연속 프로필 전환)
+  const card=document.querySelector('.uprof-card');
+  if(document.getElementById('uprofM').classList.contains('open')){
+    card.style.animation='none';
+    card.offsetHeight; // reflow 강제
+    card.style.animation='';
+  } else {
+    openM('uprofM');
+  }
 }
 
 function updateDrawerHead(){
